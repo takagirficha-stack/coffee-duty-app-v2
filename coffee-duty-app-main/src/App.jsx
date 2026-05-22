@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 const API_URL =
-  "https://script.google.com/macros/s/AKfycbx41QCs8kYM81auy4klVGdwyzTQhs2t8RRpm3s2eWCiymHI-r3JjPpZ2jkOAzln_lQ_/exec";
+  "https://script.google.com/macros/s/AKfycbzdRQAUFEGiiBVgMPHbtj61GPdxdnFLuxrj53Zydagj2NwBGMd-R3_EbDVhR18jJDkDVQ/exec";
 
 const CLEANING_MAP_URL = "/cleaning-map.jpg";
 const MACHINE_OVERVIEW_URL = "/machine-overview.png";
@@ -226,9 +226,91 @@ function MonthButton({ children, onClick }) {
         ...styles.monthButton,
         ...(pressed ? styles.monthButtonPressed : {}),
       }}
+      aria-label="Change month"
     >
       {children}
     </button>
+  );
+}
+
+function AppMotionStyles() {
+  return (
+    <style>{`
+      @keyframes softPulseToday {
+        0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.28), 0 8px 18px rgba(92,54,24,0.05); }
+        70% { box-shadow: 0 0 0 9px rgba(245, 158, 11, 0), 0 14px 28px rgba(92,54,24,0.10); }
+        100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0), 0 8px 18px rgba(92,54,24,0.05); }
+      }
+
+      @keyframes toastSlideIn {
+        0% { transform: translateY(-8px); opacity: 0; }
+        100% { transform: translateY(0); opacity: 1; }
+      }
+
+      @keyframes calendarOpen {
+        0% { transform: translateY(-14px) scale(0.98); opacity: 0; }
+        100% { transform: translateY(0) scale(1); opacity: 1; }
+      }
+
+      .soft-card,
+      .info-hover-card,
+      .cleaning-hover-row,
+      .calendar-day {
+        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+      }
+
+      .soft-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 34px 82px rgba(92, 54, 24, 0.20) !important;
+      }
+
+      .info-hover-card:hover,
+      .cleaning-hover-row:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 16px 34px rgba(92,54,24,0.12);
+      }
+
+      .calendar-day:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 14px 28px rgba(92,54,24,0.12) !important;
+      }
+
+      .today-glow {
+        animation: softPulseToday 2.2s ease-in-out infinite;
+      }
+
+      .complete-button {
+        transition: transform 0.14s ease, box-shadow 0.14s ease, filter 0.14s ease;
+      }
+
+      .complete-button:hover:not(:disabled) {
+        transform: translateY(-2px);
+        filter: brightness(1.04);
+        box-shadow: 0 20px 42px rgba(124,45,18,0.34) !important;
+      }
+
+      .complete-button:active:not(:disabled) {
+        transform: translateY(2px) scale(0.98);
+        box-shadow: 0 8px 18px rgba(124,45,18,0.22) !important;
+      }
+
+      .toast-message {
+        animation: toastSlideIn 0.22s ease both;
+      }
+
+      .calendar-panel-open {
+        animation: calendarOpen 0.28s ease both;
+      }
+
+      @media (max-width: 720px) {
+        .soft-card:hover,
+        .info-hover-card:hover,
+        .cleaning-hover-row:hover,
+        .calendar-day:hover {
+          transform: none;
+        }
+      }
+    `}</style>
   );
 }
 
@@ -297,7 +379,7 @@ export default function App() {
     assignmentChanges
   );
 
-  const todayMember = localTodayMember || apiTodayMember;
+  const todayMember = apiTodayMember || localTodayMember;
 
   const todayDone =
     !!apiRecord ||
@@ -315,7 +397,7 @@ export default function App() {
     apiHasChange || !!getChangedMember(today, assignmentChanges);
 
   const baseMember =
-  getBaseCoffeeMember(today, todayActiveMembers, holidays) || apiBaseMember;
+    apiBaseMember || getBaseCoffeeMember(today, todayActiveMembers, holidays);
 
   async function loadData() {
     setLoading(true);
@@ -527,6 +609,7 @@ export default function App() {
 
   return (
     <div style={styles.page}>
+      <AppMotionStyles />
       <div style={styles.decorCircleOne} />
       <div style={styles.decorCircleTwo} />
 
@@ -548,7 +631,7 @@ export default function App() {
           </div>
         </header>
 
-        <main style={styles.heroCard}>
+        <main className="soft-card" style={styles.heroCard}>
           <div style={styles.heroTopRow}>
             <div>
               <div style={styles.todayLabel}>Today's Coffee Cleaning Duty</div>
@@ -573,12 +656,12 @@ export default function App() {
           </div>
 
           <div style={styles.infoGrid}>
-            <div style={styles.infoCard}>
+            <div className="info-hover-card" style={styles.infoCard}>
               <div style={styles.infoLabel}>Base Assignee</div>
               <div style={styles.infoValue}>{baseMember || "-"}</div>
             </div>
 
-            <div style={styles.infoCard}>
+            <div className="info-hover-card" style={styles.infoCard}>
               <div style={styles.infoLabel}>Next Duty</div>
               <div style={styles.infoValue}>{apiNextDuty?.member || "-"}</div>
               {apiNextDuty?.date && (
@@ -586,13 +669,14 @@ export default function App() {
               )}
             </div>
 
-            <div style={styles.infoCard}>
+            <div className="info-hover-card" style={styles.infoCard}>
               <div style={styles.infoLabel}>Today</div>
               <div style={styles.infoValue}>{todayKey}</div>
             </div>
           </div>
 
           <button
+            className="complete-button"
             type="button"
             onClick={saveCoffeeComplete}
             disabled={!todayMember || todayDone}
@@ -604,7 +688,7 @@ export default function App() {
             {todayDone ? "Completed" : "Complete Coffee Cleaning"}
           </button>
 
-          {message && <div style={styles.message}>{message}</div>}
+          {message && <div className="toast-message" style={styles.message}>{message}</div>}
         </main>
 
         <section style={styles.cleaningSection}>
@@ -623,6 +707,7 @@ export default function App() {
               return (
                 <div
                   key={duty.dateKey}
+                  className="cleaning-hover-row"
                   style={{
                     ...styles.cleaningDutyRow,
                     ...(isMobile ? styles.cleaningDutyRowMobile : {}),
@@ -761,6 +846,7 @@ export default function App() {
                 return (
                   <div
                     key={key}
+                    className={`calendar-day ${isToday ? "today-glow" : ""}`}
                     style={{
                       ...cellStyle,
                       cursor: canChange ? "pointer" : "default",
@@ -1317,31 +1403,31 @@ const styles = {
     height: 50,
   },
   monthButton: {
-  width: 56,
-  height: 56,
-  borderRadius: 18,
-  border: "1px solid rgba(146,64,14,0.12)",
-  background: "#fffaf5",
-  fontSize: 28,
-  fontWeight: 700,
-  lineHeight: 1,
-  color: "#2b1d16",
-  cursor: "pointer",
-  boxShadow:
-    "0 6px 14px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.7)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: 0,
-  transition:
-    "transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease",
-},
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    border: "1px solid rgba(146,64,14,0.12)",
+    background: "#fffaf5",
+    fontSize: 28,
+    fontWeight: 700,
+    lineHeight: 1,
+    color: "#2b1d16",
+    cursor: "pointer",
+    boxShadow:
+      "0 6px 14px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.7)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 0,
+    transition:
+      "transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease",
+  },
   monthButtonPressed: {
-  transform: "translateY(2px) scale(0.96)",
-  boxShadow:
-    "0 2px 6px rgba(0,0,0,0.10), inset 0 2px 4px rgba(0,0,0,0.08)",
-  background: "#efe4d8",
-},
+    transform: "translateY(2px) scale(0.96)",
+    boxShadow:
+      "0 2px 6px rgba(0,0,0,0.10), inset 0 2px 4px rgba(0,0,0,0.08)",
+    background: "#efe4d8",
+  },
   monthTitle: {
     minWidth: 230,
     textAlign: "center",

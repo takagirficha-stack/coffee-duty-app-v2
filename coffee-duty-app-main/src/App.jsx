@@ -115,7 +115,7 @@ function isPastDate(date) {
 }
 
 function getBusinessDayIndex(date, holidays) {
-  const start = new Date(date.getFullYear(), date.getMonth(), 1);
+  const start = new Date(date.getFullYear(), 0, 1);
   let count = 0;
 
   for (let d = new Date(start); d <= date; d.setDate(d.getDate() + 1)) {
@@ -283,7 +283,7 @@ export default function App() {
     assignmentChanges
   );
 
-  const todayMember = apiTodayMember || localTodayMember;
+  const todayMember = localTodayMember || apiTodayMember;
 
   const todayDone =
     !!apiRecord ||
@@ -301,7 +301,7 @@ export default function App() {
     apiHasChange || !!getChangedMember(today, assignmentChanges);
 
   const baseMember =
-    apiBaseMember || getBaseCoffeeMember(today, todayActiveMembers, holidays);
+  getBaseCoffeeMember(today, todayActiveMembers, holidays) || apiBaseMember;
 
   async function loadData() {
     setLoading(true);

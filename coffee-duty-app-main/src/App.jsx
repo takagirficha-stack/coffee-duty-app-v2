@@ -10,8 +10,18 @@ const PART_HOLDER_URL = "/part-holder.png";
 const PART_TRAY_URL = "/part-tray.png";
 
 const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 const MACHINE_PARTS = {
@@ -54,6 +64,45 @@ function toDateKey(date) {
   return `${y}-${m}-${d}`;
 }
 
+function getMonthKey(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+}
+
+function normalizeMonthValue(value) {
+  if (!value) return "";
+  const str = String(value).trim();
+
+  if (str.includes("/")) {
+    const [year, month] = str.split("/");
+    return `${year}-${String(month).padStart(2, "0")}`;
+  }
+
+  return str.slice(0, 7);
+}
+
+function getActiveNamesForDate(date, versions, fallbackMembers = []) {
+  if (!versions || versions.length === 0) return fallbackMembers;
+
+  const targetMonth = getMonthKey(date);
+
+  return versions
+    .filter((m) => {
+      const name = String(m.name || "").trim();
+      const start = normalizeMonthValue(m.startMonth);
+      const end = normalizeMonthValue(m.endMonth);
+
+      if (!name || !start) return false;
+
+      // endMonth is excluded from that month.
+      // Example: endMonth = 2026/5 means excluded from 2026-05 onward.
+      return start <= targetMonth && (!end || end > targetMonth);
+    })
+    .map((m) => String(m.name || "").trim())
+    .filter(Boolean);
+}
+
 function isWeekend(date) {
   return date.getDay() === 0 || date.getDay() === 6;
 }
@@ -63,18 +112,6 @@ function isPastDate(date) {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   return target < today;
-}
-
-function buildCalendar(year, month) {
-  const firstDay = new Date(year, month - 1, 1);
-  const start = new Date(firstDay);
-  start.setDate(firstDay.getDate() - firstDay.getDay());
-
-  return Array.from({ length: 42 }, (_, i) => {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    return d;
-  });
 }
 
 function getBusinessDayIndex(date, holidays) {
@@ -91,6 +128,7 @@ function getBusinessDayIndex(date, holidays) {
 
 function getBaseCoffeeMember(date, members, holidays) {
   const key = toDateKey(date);
+
   if (!members.length) return "";
   if (isWeekend(date)) return "";
   if (holidays.includes(key)) return "";
@@ -102,6 +140,7 @@ function getBaseCoffeeMember(date, members, holidays) {
 function getChangedMember(date, assignmentChanges) {
   const key = toDateKey(date);
   const changes = assignmentChanges.filter((item) => item.date === key);
+
   if (!changes.length) return "";
   return changes[changes.length - 1].newMember || "";
 }
@@ -109,7 +148,20 @@ function getChangedMember(date, assignmentChanges) {
 function getCoffeeMember(date, members, holidays, assignmentChanges) {
   const changed = getChangedMember(date, assignmentChanges);
   if (changed) return changed;
+
   return getBaseCoffeeMember(date, members, holidays);
+}
+
+function buildCalendar(year, month) {
+  const firstDay = new Date(year, month - 1, 1);
+  const start = new Date(firstDay);
+  start.setDate(firstDay.getDate() - firstDay.getDay());
+
+  return Array.from({ length: 42 }, (_, i) => {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    return d;
+  });
 }
 
 function getNthWeekdayOfMonth(year, month, weekday, nth) {
@@ -121,6 +173,7 @@ function getNthWeekdayOfMonth(year, month, weekday, nth) {
 function getCleaningDutiesForMonth(year, month, cleaningMembers) {
   const secondThursday = getNthWeekdayOfMonth(year, month, 4, 2);
   const fourthThursday = getNthWeekdayOfMonth(year, month, 4, 4);
+
   const baseIndex = (month - 1) * 2;
 
   return [
@@ -172,6 +225,8 @@ export default function App() {
   const todayKey = toDateKey(today);
 
   const [members, setMembers] = useState([]);
+  const [memberVersions, setMemberVersions] = useState([]);
+  const [cleaningMemberVersions, setCleaningMemberVersions] = useState([]);
   const [holidays, setHolidays] = useState([]);
   const [records, setRecords] = useState({});
   const [assignmentChanges, setAssignmentChanges] = useState([]);
@@ -203,16 +258,27 @@ export default function App() {
 
   const selectedPart = MACHINE_PARTS[selectedMachinePart];
 
-  const monthCleaningDuties = useMemo(
-    () => getCleaningDutiesForMonth(year, month, cleaningMembers),
-    [year, month, cleaningMembers]
+  const todayActiveMembers = useMemo(
+    () => getActiveNamesForDate(today, memberVersions, members),
+    [memberVersions, members, todayKey]
   );
+
+  const monthCleaningDuties = useMemo(() => {
+    const targetDate = new Date(year, month - 1, 1);
+    const activeCleaningMembers = getActiveNamesForDate(
+      targetDate,
+      cleaningMemberVersions,
+      cleaningMembers
+    );
+
+    return getCleaningDutiesForMonth(year, month, activeCleaningMembers);
+  }, [year, month, cleaningMembers, cleaningMemberVersions]);
 
   const days = useMemo(() => buildCalendar(year, month), [year, month]);
 
   const localTodayMember = getCoffeeMember(
     today,
-    members,
+    todayActiveMembers,
     holidays,
     assignmentChanges
   );
@@ -235,7 +301,7 @@ export default function App() {
     apiHasChange || !!getChangedMember(today, assignmentChanges);
 
   const baseMember =
-    apiBaseMember || getBaseCoffeeMember(today, members, holidays);
+    apiBaseMember || getBaseCoffeeMember(today, todayActiveMembers, holidays);
 
   async function loadData() {
     setLoading(true);
@@ -246,6 +312,8 @@ export default function App() {
       const data = await res.json();
 
       setMembers(data.members || []);
+      setMemberVersions(data.memberVersions || []);
+      setCleaningMemberVersions(data.cleaningMemberVersions || []);
       setHolidays(data.holidays || []);
       setAssignmentChanges(data.assignmentChanges || []);
       setCleaningMembers(data.cleaningMembers || []);
@@ -359,7 +427,18 @@ export default function App() {
   const openChangeForm = (date) => {
     if (isPastDate(date)) return;
 
-    const member = getCoffeeMember(date, members, holidays, assignmentChanges);
+    const activeMembersForDate = getActiveNamesForDate(
+      date,
+      memberVersions,
+      members
+    );
+
+    const member = getCoffeeMember(
+      date,
+      activeMembersForDate,
+      holidays,
+      assignmentChanges
+    );
     if (!member) return;
 
     setSelectedDate(date);
@@ -377,9 +456,15 @@ export default function App() {
     }
 
     const dateKey = toDateKey(selectedDate);
+    const activeMembersForDate = getActiveNamesForDate(
+      selectedDate,
+      memberVersions,
+      members
+    );
+
     const oldMember = getCoffeeMember(
       selectedDate,
-      members,
+      activeMembersForDate,
       holidays,
       assignmentChanges
     );
@@ -481,9 +566,7 @@ export default function App() {
 
             <div style={styles.infoCard}>
               <div style={styles.infoLabel}>Next Duty</div>
-              <div style={styles.infoValue}>
-                {apiNextDuty?.member || "-"}
-              </div>
+              <div style={styles.infoValue}>{apiNextDuty?.member || "-"}</div>
               {apiNextDuty?.date && (
                 <div style={styles.infoSub}>{apiNextDuty.date}</div>
               )}
@@ -632,12 +715,20 @@ export default function App() {
                 const inMonth = date.getMonth() + 1 === month;
                 const holiday = holidays.includes(key);
                 const weekend = isWeekend(date);
+
+                const activeMembersForDate = getActiveNamesForDate(
+                  date,
+                  memberVersions,
+                  members
+                );
+
                 const member = getCoffeeMember(
                   date,
-                  members,
+                  activeMembersForDate,
                   holidays,
                   assignmentChanges
                 );
+
                 const done =
                   records[key]?.trash &&
                   records[key]?.water &&
@@ -686,14 +777,8 @@ export default function App() {
       </div>
 
       {showRules && (
-        <div
-          style={styles.modalOverlay}
-          onClick={() => setShowRules(false)}
-        >
-          <div
-            style={styles.rulesModalCard}
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div style={styles.modalOverlay} onClick={() => setShowRules(false)}>
+          <div style={styles.rulesModalCard} onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalHeader}>
               <div>
                 <h2 style={styles.modalTitle}>Cleaning Rules</h2>
@@ -701,11 +786,7 @@ export default function App() {
                   Daily operating procedure for keeping the coffee area clean.
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowRules(false)}
-                style={styles.cancelButton}
-              >
+              <button type="button" onClick={() => setShowRules(false)} style={styles.cancelButton}>
                 Close
               </button>
             </div>
@@ -750,45 +831,22 @@ export default function App() {
                   />
                 </div>
 
-                <div
-                  style={{
-                    ...styles.partTabs,
-                    ...(isMobile ? styles.partTabsMobile : {}),
-                  }}
-                >
+                <div style={{ ...styles.partTabs, ...(isMobile ? styles.partTabsMobile : {}) }}>
                   {Object.entries(MACHINE_PARTS).map(([key, part]) => (
                     <button
                       key={key}
                       type="button"
                       onClick={() => setSelectedMachinePart(key)}
-                      style={
-                        selectedMachinePart === key
-                          ? styles.partTabActive
-                          : styles.partTab
-                      }
+                      style={selectedMachinePart === key ? styles.partTabActive : styles.partTab}
                     >
                       {part.label}
                     </button>
                   ))}
                 </div>
 
-                <div
-                  style={{
-                    ...styles.partDetailCard,
-                    ...(isMobile ? styles.partDetailCardMobile : {}),
-                  }}
-                >
-                  <div
-                    style={{
-                      ...styles.partImageBox,
-                      ...(isMobile ? styles.partImageBoxMobile : {}),
-                    }}
-                  >
-                    <img
-                      src={selectedPart.image}
-                      alt={selectedPart.label}
-                      style={styles.partImage}
-                    />
+                <div style={{ ...styles.partDetailCard, ...(isMobile ? styles.partDetailCardMobile : {}) }}>
+                  <div style={{ ...styles.partImageBox, ...(isMobile ? styles.partImageBoxMobile : {}) }}>
+                    <img src={selectedPart.image} alt={selectedPart.label} style={styles.partImage} />
                   </div>
 
                   <div style={styles.partDetailTextBox}>
@@ -816,14 +874,8 @@ export default function App() {
       )}
 
       {showMap && (
-        <div
-          style={styles.modalOverlay}
-          onClick={() => setShowMap(false)}
-        >
-          <div
-            style={styles.mapModalCard}
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div style={styles.modalOverlay} onClick={() => setShowMap(false)}>
+          <div style={styles.mapModalCard} onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalHeader}>
               <div>
                 <h2 style={styles.modalTitle}>Cleaning Area</h2>
@@ -831,11 +883,7 @@ export default function App() {
                   Check the assigned area and clean the corresponding space.
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowMap(false)}
-                style={styles.cancelButton}
-              >
+              <button type="button" onClick={() => setShowMap(false)} style={styles.cancelButton}>
                 Close
               </button>
             </div>
@@ -847,11 +895,7 @@ export default function App() {
               </div>
 
               <div style={styles.mapImageFrame}>
-                <img
-                  src={CLEANING_MAP_URL}
-                  alt="Cleaning area map"
-                  style={styles.cleaningMapImage}
-                />
+                <img src={CLEANING_MAP_URL} alt="Cleaning area map" style={styles.cleaningMapImage} />
               </div>
             </div>
           </div>
@@ -859,14 +903,8 @@ export default function App() {
       )}
 
       {selectedDate && (
-        <div
-          style={styles.modalOverlay}
-          onClick={() => setSelectedDate(null)}
-        >
-          <div
-            style={styles.modalCard}
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div style={styles.modalOverlay} onClick={() => setSelectedDate(null)}>
+          <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
             <h2 style={styles.modalTitle}>Change Assignee</h2>
             <div style={styles.modalDate}>{toDateKey(selectedDate)}</div>
 
@@ -884,7 +922,7 @@ export default function App() {
               onChange={(e) => setChangeMember(e.target.value)}
               style={styles.input}
             >
-              {members.map((m) => (
+              {getActiveNamesForDate(selectedDate, memberVersions, members).map((m) => (
                 <option key={m} value={m}>
                   {m}
                 </option>
@@ -900,19 +938,11 @@ export default function App() {
             />
 
             <div style={styles.modalActions}>
-              <button
-                type="button"
-                onClick={() => setSelectedDate(null)}
-                style={styles.cancelButton}
-              >
+              <button type="button" onClick={() => setSelectedDate(null)} style={styles.cancelButton}>
                 Cancel
               </button>
 
-              <button
-                type="button"
-                onClick={saveAssignmentChange}
-                style={styles.saveButton}
-              >
+              <button type="button" onClick={saveAssignmentChange} style={styles.saveButton}>
                 Save
               </button>
             </div>

@@ -115,7 +115,7 @@ function isPastDate(date) {
 }
 
 function getBusinessDayIndex(date, holidays) {
-  const start = new Date(date.getFullYear(), 0, 1);
+  const start = new Date(date.getFullYear(), date.getMonth(), 1);
   let count = 0;
 
   for (let d = new Date(start); d <= date; d.setDate(d.getDate() + 1)) {

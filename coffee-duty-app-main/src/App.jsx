@@ -10,18 +10,8 @@ const PART_HOLDER_URL = "/part-holder.png";
 const PART_TRAY_URL = "/part-tray.png";
 
 const MONTH_NAMES = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
 ];
 
 const MACHINE_PARTS = {
@@ -75,6 +65,18 @@ function isPastDate(date) {
   return target < today;
 }
 
+function buildCalendar(year, month) {
+  const firstDay = new Date(year, month - 1, 1);
+  const start = new Date(firstDay);
+  start.setDate(firstDay.getDate() - firstDay.getDay());
+
+  return Array.from({ length: 42 }, (_, i) => {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    return d;
+  });
+}
+
 function getBusinessDayIndex(date, holidays) {
   const start = new Date(date.getFullYear(), 0, 1);
   let count = 0;
@@ -89,19 +91,17 @@ function getBusinessDayIndex(date, holidays) {
 
 function getBaseCoffeeMember(date, members, holidays) {
   const key = toDateKey(date);
-
   if (!members.length) return "";
   if (isWeekend(date)) return "";
   if (holidays.includes(key)) return "";
 
   const index = (getBusinessDayIndex(date, holidays) - 1) % members.length;
-  return members[index];
+  return members[index] || "";
 }
 
 function getChangedMember(date, assignmentChanges) {
   const key = toDateKey(date);
   const changes = assignmentChanges.filter((item) => item.date === key);
-
   if (!changes.length) return "";
   return changes[changes.length - 1].newMember || "";
 }
@@ -109,20 +109,7 @@ function getChangedMember(date, assignmentChanges) {
 function getCoffeeMember(date, members, holidays, assignmentChanges) {
   const changed = getChangedMember(date, assignmentChanges);
   if (changed) return changed;
-
   return getBaseCoffeeMember(date, members, holidays);
-}
-
-function buildCalendar(year, month) {
-  const firstDay = new Date(year, month - 1, 1);
-  const start = new Date(firstDay);
-  start.setDate(firstDay.getDate() - firstDay.getDay());
-
-  return Array.from({ length: 42 }, (_, i) => {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    return d;
-  });
 }
 
 function getNthWeekdayOfMonth(year, month, weekday, nth) {
@@ -134,7 +121,6 @@ function getNthWeekdayOfMonth(year, month, weekday, nth) {
 function getCleaningDutiesForMonth(year, month, cleaningMembers) {
   const secondThursday = getNthWeekdayOfMonth(year, month, 4, 2);
   const fourthThursday = getNthWeekdayOfMonth(year, month, 4, 4);
-
   const baseIndex = (month - 1) * 2;
 
   return [
@@ -192,6 +178,13 @@ export default function App() {
   const [cleaningMembers, setCleaningMembers] = useState([]);
   const [cleaningRecords, setCleaningRecords] = useState({});
 
+  const [apiTodayMember, setApiTodayMember] = useState("");
+  const [apiBaseMember, setApiBaseMember] = useState("");
+  const [apiNextDuty, setApiNextDuty] = useState(null);
+  const [apiHasChange, setApiHasChange] = useState(false);
+  const [apiRecord, setApiRecord] = useState(null);
+  const [appVersion, setAppVersion] = useState("v2.0.0");
+
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
 
@@ -208,55 +201,83 @@ export default function App() {
   const [changeMember, setChangeMember] = useState("");
   const [changeReason, setChangeReason] = useState("");
 
-  useEffect(() => {
-    fetch(API_URL)
-      .then((res) => res.json())
-      .then((data) => {
-        setMembers(data.members || []);
-        setHolidays(data.holidays || []);
-        setAssignmentChanges(data.assignmentChanges || []);
-        setCleaningMembers(data.cleaningMembers || []);
-
-        const coffeeMap = {};
-        (data.records || []).forEach((r) => {
-          if (r.date) coffeeMap[r.date] = r;
-        });
-        setRecords(coffeeMap);
-
-        const cleaningMap = {};
-        (data.cleaningRecords || []).forEach((r) => {
-          if (r.date) cleaningMap[r.date] = r;
-        });
-        setCleaningRecords(cleaningMap);
-      })
-      .catch(() => {
-        setMessage("Failed to load data. Please check the API connection.");
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, []);
-
-  const days = useMemo(() => buildCalendar(year, month), [year, month]);
+  const selectedPart = MACHINE_PARTS[selectedMachinePart];
 
   const monthCleaningDuties = useMemo(
     () => getCleaningDutiesForMonth(year, month, cleaningMembers),
     [year, month, cleaningMembers]
   );
 
-  const todayMember = getCoffeeMember(
+  const days = useMemo(() => buildCalendar(year, month), [year, month]);
+
+  const localTodayMember = getCoffeeMember(
     today,
     members,
     holidays,
     assignmentChanges
   );
 
-  const todayDone =
-    records[todayKey]?.trash &&
-    records[todayKey]?.water &&
-    records[todayKey]?.clean;
+  const todayMember = apiTodayMember || localTodayMember;
 
-  const selectedPart = MACHINE_PARTS[selectedMachinePart];
+  const todayDone =
+    !!apiRecord ||
+    (records[todayKey]?.trash &&
+      records[todayKey]?.water &&
+      records[todayKey]?.clean);
+
+  const completedAt =
+    apiRecord?.completedAt ||
+    records[todayKey]?.completedAt ||
+    records[todayKey]?.time ||
+    "";
+
+  const hasTodayChange =
+    apiHasChange || !!getChangedMember(today, assignmentChanges);
+
+  const baseMember =
+    apiBaseMember || getBaseCoffeeMember(today, members, holidays);
+
+  async function loadData() {
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const res = await fetch(`${API_URL}?t=${Date.now()}`);
+      const data = await res.json();
+
+      setMembers(data.members || []);
+      setHolidays(data.holidays || []);
+      setAssignmentChanges(data.assignmentChanges || []);
+      setCleaningMembers(data.cleaningMembers || []);
+      setAppVersion(data.appVersion || "v2.0.0");
+
+      setApiTodayMember(data.todayMember || "");
+      setApiBaseMember(data.baseMember || "");
+      setApiNextDuty(data.nextDuty || null);
+      setApiHasChange(!!data.hasChange);
+      setApiRecord(data.record || null);
+
+      const coffeeMap = {};
+      (data.records || []).forEach((r) => {
+        if (r.date) coffeeMap[r.date] = r;
+      });
+      setRecords(coffeeMap);
+
+      const cleaningMap = {};
+      (data.cleaningRecords || []).forEach((r) => {
+        if (r.date) cleaningMap[r.date] = r;
+      });
+      setCleaningRecords(cleaningMap);
+    } catch {
+      setMessage("Failed to load data. Please check the API connection.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   async function postData(data) {
     await fetch(API_URL, {
@@ -269,20 +290,33 @@ export default function App() {
     if (!todayMember || todayDone) return;
 
     const data = {
-      date: todayKey,
+      action: "completeCoffee",
       member: todayMember,
-      trash: true,
-      water: true,
-      clean: true,
+      user: todayMember,
     };
 
     setMessage("Saving...");
 
     try {
       await postData(data);
+      setApiRecord({
+        date: todayKey,
+        member: todayMember,
+        completedAt: new Date().toLocaleTimeString("ja-JP", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      });
       setRecords((prev) => ({
         ...prev,
-        [todayKey]: data,
+        [todayKey]: {
+          date: todayKey,
+          member: todayMember,
+          trash: true,
+          water: true,
+          clean: true,
+          completedAt: new Date().toISOString(),
+        },
       }));
       setMessage("Coffee cleaning report has been saved.");
       setTimeout(() => setMessage(""), 2500);
@@ -351,6 +385,7 @@ export default function App() {
     );
 
     const data = {
+      action: "changeAssignment",
       type: "assignment_change",
       date: dateKey,
       oldMember,
@@ -367,6 +402,7 @@ export default function App() {
       setSelectedDate(null);
       setMessage("Assignee change has been saved.");
       setTimeout(() => setMessage(""), 2500);
+      await loadData();
     } catch {
       setMessage("Failed to save the change.");
     }
@@ -392,41 +428,97 @@ export default function App() {
 
   return (
     <div style={styles.page}>
+      <div style={styles.decorCircleOne} />
+      <div style={styles.decorCircleTwo} />
+
       <div style={styles.appShell}>
         <header style={styles.header}>
           <div>
-            <div style={styles.kicker}>Coffee Dolce Duty</div>
+            <div style={styles.kicker}>Coffee Dolce Operations</div>
             <h1 style={styles.title}>Coffee Duty</h1>
-          </div>
-          <div style={styles.badge}>Internal Operations App</div>
-        </header>
-
-        <main style={styles.mainCard}>
-          <div style={styles.todayLabel}>Today's Coffee Cleaning Duty</div>
-
-          <div style={styles.todayRow}>
-            <div style={styles.todayMemberCompact}>
-              {loading ? "Loading..." : todayMember || "No duty today"}
+            <div style={styles.subtitle}>
+              A small daily routine, beautifully managed.
             </div>
+          </div>
 
-            <button
-              type="button"
-              onClick={saveCoffeeComplete}
-              disabled={!todayMember || todayDone}
-              style={{
-                ...styles.primaryButton,
-                ...(!todayMember || todayDone ? styles.disabledButton : {}),
-              }}
-            >
-              {todayDone ? "Completed" : "Complete"}
+          <div style={styles.headerRight}>
+            <div style={styles.versionBadge}>{appVersion}</div>
+            <button type="button" onClick={loadData} style={styles.refreshButton}>
+              Refresh
             </button>
           </div>
+        </header>
 
-          <div style={styles.cleaningSection}>
-            <div style={styles.cleaningSectionTitle}>
-              Monthly Area Cleaning Duty
+        <main style={styles.heroCard}>
+          <div style={styles.heroTopRow}>
+            <div>
+              <div style={styles.todayLabel}>Today's Coffee Cleaning Duty</div>
+              <div style={styles.todayMemberCompact}>
+                {loading ? "Loading..." : todayMember || "No duty today"}
+              </div>
             </div>
 
+            <div style={styles.statusStack}>
+              {hasTodayChange && (
+                <div style={styles.changeBadge}>Changed Today</div>
+              )}
+
+              {todayDone ? (
+                <div style={styles.doneBadge}>
+                  Completed{completedAt ? ` · ${completedAt}` : ""}
+                </div>
+              ) : (
+                <div style={styles.pendingBadge}>Waiting Report</div>
+              )}
+            </div>
+          </div>
+
+          <div style={styles.infoGrid}>
+            <div style={styles.infoCard}>
+              <div style={styles.infoLabel}>Base Assignee</div>
+              <div style={styles.infoValue}>{baseMember || "-"}</div>
+            </div>
+
+            <div style={styles.infoCard}>
+              <div style={styles.infoLabel}>Next Duty</div>
+              <div style={styles.infoValue}>
+                {apiNextDuty?.member || "-"}
+              </div>
+              {apiNextDuty?.date && (
+                <div style={styles.infoSub}>{apiNextDuty.date}</div>
+              )}
+            </div>
+
+            <div style={styles.infoCard}>
+              <div style={styles.infoLabel}>Today</div>
+              <div style={styles.infoValue}>{todayKey}</div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={saveCoffeeComplete}
+            disabled={!todayMember || todayDone}
+            style={{
+              ...styles.primaryButton,
+              ...(!todayMember || todayDone ? styles.disabledButton : {}),
+            }}
+          >
+            {todayDone ? "Completed" : "Complete Coffee Cleaning"}
+          </button>
+
+          {message && <div style={styles.message}>{message}</div>}
+        </main>
+
+        <section style={styles.cleaningSection}>
+          <div style={styles.sectionHeader}>
+            <div>
+              <div style={styles.sectionKicker}>Floor Cleaning</div>
+              <h2 style={styles.sectionTitle}>Monthly Area Cleaning Duty</h2>
+            </div>
+          </div>
+
+          <div style={styles.cleaningList}>
             {monthCleaningDuties.map((duty) => {
               const done = !!cleaningRecords[duty.dateKey];
               const canComplete = duty.dateKey === todayKey && !done;
@@ -439,10 +531,13 @@ export default function App() {
                     ...(isMobile ? styles.cleaningDutyRowMobile : {}),
                   }}
                 >
-                  <div style={styles.cleaningDutyDate}>{duty.dateKey}</div>
-                  <div style={styles.cleaningDutyMember}>
-                    {duty.member || "Unassigned"}
+                  <div>
+                    <div style={styles.cleaningDutyDate}>{duty.dateKey}</div>
+                    <div style={styles.cleaningDutyMember}>
+                      {duty.member || "Unassigned"}
+                    </div>
                   </div>
+
                   <div style={styles.cleaningDutyArea}>Area {duty.area}</div>
 
                   <button
@@ -462,9 +557,7 @@ export default function App() {
               );
             })}
           </div>
-
-          {message && <div style={styles.message}>{message}</div>}
-        </main>
+        </section>
 
         <div
           style={{
@@ -500,7 +593,7 @@ export default function App() {
         <section
           style={{
             ...styles.calendarPanel,
-            maxHeight: showCalendar ? 900 : 0,
+            maxHeight: showCalendar ? 980 : 0,
             opacity: showCalendar ? 1 : 0,
             transform: showCalendar ? "translateY(0)" : "translateY(-12px)",
             pointerEvents: showCalendar ? "auto" : "none",
@@ -553,23 +646,18 @@ export default function App() {
                 const changed = !!getChangedMember(date, assignmentChanges);
                 const canChange = inMonth && member && !isPastDate(date);
 
-                let background = "#ffffff";
-                if (!inMonth) background = "#e5e7eb";
-                else if (done) background = "#dbeafe";
-                else if (isToday) background = "#fff7cc";
-                else if (weekend) background = "#cbd5e1";
-                else if (holiday) background = "#ffe8e8";
+                let cellStyle = styles.dayCell;
+                if (!inMonth) cellStyle = { ...cellStyle, ...styles.dayMuted };
+                else if (done) cellStyle = { ...cellStyle, ...styles.dayDone };
+                else if (isToday) cellStyle = { ...cellStyle, ...styles.dayToday };
+                else if (weekend) cellStyle = { ...cellStyle, ...styles.dayWeekend };
+                else if (holiday) cellStyle = { ...cellStyle, ...styles.dayHoliday };
 
                 return (
                   <div
                     key={key}
                     style={{
-                      ...styles.dayCell,
-                      background,
-                      color: inMonth ? "#0f172a" : "#94a3b8",
-                      border: isToday
-                        ? "3px solid #f59e0b"
-                        : "1px solid #d1d5db",
+                      ...cellStyle,
                       cursor: canChange ? "pointer" : "default",
                     }}
                     onClick={() => openChangeForm(date)}
@@ -586,9 +674,7 @@ export default function App() {
                         <div style={styles.memberName} title={member}>
                           {member}
                         </div>
-                        {changed && (
-                          <div style={styles.changedMark}>Changed</div>
-                        )}
+                        {changed && <div style={styles.changedMark}>Changed</div>}
                       </>
                     )}
                   </div>
@@ -600,14 +686,19 @@ export default function App() {
       </div>
 
       {showRules && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.rulesModalCard}>
+        <div
+          style={styles.modalOverlay}
+          onClick={() => setShowRules(false)}
+        >
+          <div
+            style={styles.rulesModalCard}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div style={styles.modalHeader}>
               <div>
                 <h2 style={styles.modalTitle}>Cleaning Rules</h2>
                 <div style={styles.modalSubText}>
-                  Daily operating procedure for keeping the coffee area clean
-                  and ready to use.
+                  Daily operating procedure for keeping the coffee area clean.
                 </div>
               </div>
               <button
@@ -620,52 +711,33 @@ export default function App() {
             </div>
 
             <div style={styles.ruleList}>
-              <div
-                style={{ ...styles.ruleSection, ...styles.ruleSectionMorning }}
-              >
+              <div style={{ ...styles.ruleSection, ...styles.ruleMorning }}>
                 <div style={styles.ruleTitle}>Morning Routine</div>
                 <ul style={styles.ruleBullets}>
                   <li>Refill the water tank.</li>
-                  <li>
-                    Check the capsule trash bin and dispose of used capsules if
-                    needed.
-                  </li>
-                  <li>
-                    Wipe off any water drops or stains around the coffee
-                    machine.
-                  </li>
+                  <li>Check the capsule trash bin.</li>
+                  <li>Wipe off water drops around the coffee machine.</li>
                 </ul>
               </div>
 
-              <div
-                style={{ ...styles.ruleSection, ...styles.ruleSectionEvening }}
-              >
+              <div style={{ ...styles.ruleSection, ...styles.ruleEvening }}>
                 <div style={styles.ruleTitle}>Evening Routine</div>
                 <ul style={styles.ruleBullets}>
                   <li>Clean the area around the coffee machine.</li>
-                  <li>
-                    Empty the capsule trash bin and wash it with detergent.
-                  </li>
-                  <li>
-                    Check the inventory of capsules, paper cups, and stirrers.
-                  </li>
+                  <li>Empty the capsule trash bin and wash it.</li>
+                  <li>Check capsules, paper cups, and stirrers.</li>
                 </ul>
               </div>
 
-              <div
-                style={{ ...styles.ruleSection, ...styles.ruleSectionCleaning }}
-              >
-                <div style={styles.ruleTitle}>
-                  Coffee Machine Cleaning Guide
-                </div>
+              <div style={{ ...styles.ruleSection, ...styles.ruleMachine }}>
+                <div style={styles.ruleTitle}>Coffee Machine Cleaning Guide</div>
 
                 <div style={styles.machineOverviewCard}>
                   <div style={styles.machineOverviewHeader}>
                     <div>
                       <div style={styles.machineOverviewTitle}>Parts Guide</div>
                       <div style={styles.machineOverviewSubText}>
-                        Select a part to review the target component and
-                        cleaning steps.
+                        Select a part to review cleaning steps.
                       </div>
                     </div>
                     <div style={styles.machineOverviewBadge}>Manual</div>
@@ -731,13 +803,11 @@ export default function App() {
                 </div>
               </div>
 
-              <div
-                style={{ ...styles.ruleSection, ...styles.ruleSectionFloor }}
-              >
+              <div style={{ ...styles.ruleSection, ...styles.ruleFloor }}>
                 <div style={styles.ruleTitle}>Floor Cleaning</div>
                 <ul style={styles.ruleBullets}>
                   <li>Vacuum the assigned cleaning area.</li>
-                  <li>Clean any visible dust, trash, or stains if found.</li>
+                  <li>Clean visible dust, trash, or stains if found.</li>
                 </ul>
               </div>
             </div>
@@ -746,8 +816,14 @@ export default function App() {
       )}
 
       {showMap && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.mapModalCard}>
+        <div
+          style={styles.modalOverlay}
+          onClick={() => setShowMap(false)}
+        >
+          <div
+            style={styles.mapModalCard}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div style={styles.modalHeader}>
               <div>
                 <h2 style={styles.modalTitle}>Cleaning Area</h2>
@@ -783,8 +859,14 @@ export default function App() {
       )}
 
       {selectedDate && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalCard}>
+        <div
+          style={styles.modalOverlay}
+          onClick={() => setSelectedDate(null)}
+        >
+          <div
+            style={styles.modalCard}
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 style={styles.modalTitle}>Change Assignee</h2>
             <div style={styles.modalDate}>{toDateKey(selectedDate)}</div>
 
@@ -844,199 +926,337 @@ export default function App() {
 const styles = {
   page: {
     minHeight: "100vh",
-    padding: "24px 14px",
+    padding: "28px 14px 42px",
     fontFamily:
       "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     background:
-      "linear-gradient(135deg, #eff6ff 0%, #f8fafc 45%, #f1f5f9 100%)",
-    color: "#0f172a",
+      "radial-gradient(circle at top left, #fdecc8 0, transparent 34%), radial-gradient(circle at top right, #dbeafe 0, transparent 30%), linear-gradient(135deg, #fff7ed 0%, #f8fafc 48%, #eef2ff 100%)",
+    color: "#24160f",
     letterSpacing: "0.01em",
+    position: "relative",
+    overflowX: "hidden",
+  },
+  decorCircleOne: {
+    position: "fixed",
+    width: 280,
+    height: 280,
+    borderRadius: "50%",
+    background: "rgba(146, 64, 14, 0.08)",
+    top: -120,
+    left: -80,
+    pointerEvents: "none",
+  },
+  decorCircleTwo: {
+    position: "fixed",
+    width: 340,
+    height: 340,
+    borderRadius: "50%",
+    background: "rgba(30, 64, 175, 0.08)",
+    right: -120,
+    bottom: -120,
+    pointerEvents: "none",
   },
   appShell: {
-    maxWidth: 980,
+    maxWidth: 1000,
     margin: "0 auto",
+    position: "relative",
+    zIndex: 1,
   },
   header: {
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
+    alignItems: "flex-end",
+    gap: 16,
+    marginBottom: 22,
+    flexWrap: "wrap",
   },
   kicker: {
     fontSize: 12,
-    fontWeight: 800,
-    color: "#2563eb",
-    letterSpacing: "0.12em",
+    fontWeight: 900,
+    color: "#9a3412",
+    letterSpacing: "0.16em",
     textTransform: "uppercase",
   },
   title: {
-    margin: 0,
-    fontSize: 36,
+    margin: "4px 0 0",
+    fontSize: 42,
     fontWeight: 950,
-    letterSpacing: "-0.035em",
-    lineHeight: 1.05,
+    letterSpacing: "-0.05em",
+    lineHeight: 1,
+    color: "#1c120c",
   },
-  badge: {
+  subtitle: {
+    marginTop: 8,
+    color: "#7c5a46",
+    fontSize: 13,
+    fontWeight: 750,
+  },
+  headerRight: {
+    display: "flex",
+    gap: 8,
+    alignItems: "center",
+  },
+  versionBadge: {
     padding: "8px 12px",
     borderRadius: 999,
-    background: "#ffffff",
-    boxShadow: "0 8px 20px rgba(15, 23, 42, 0.08)",
+    background: "rgba(255,255,255,0.72)",
+    border: "1px solid rgba(146,64,14,0.12)",
     fontSize: 12,
-    fontWeight: 850,
-    letterSpacing: "0.04em",
-    color: "#0f172a",
+    fontWeight: 900,
+    color: "#78350f",
+    boxShadow: "0 10px 24px rgba(120, 53, 15, 0.08)",
   },
-  mainCard: {
-    padding: "34px 24px",
-    borderRadius: 28,
+  refreshButton: {
+    padding: "9px 13px",
+    borderRadius: 999,
+    border: "1px solid rgba(120,53,15,0.16)",
     background: "#ffffff",
-    textAlign: "center",
-    boxShadow: "0 20px 50px rgba(15, 23, 42, 0.12)",
+    color: "#3b2418",
+    fontSize: 12,
+    fontWeight: 900,
+    cursor: "pointer",
+    boxShadow: "0 10px 24px rgba(120, 53, 15, 0.08)",
+  },
+  heroCard: {
+    padding: "30px 24px",
+    borderRadius: 34,
+    background: "rgba(255,255,255,0.82)",
+    backdropFilter: "blur(16px)",
+    border: "1px solid rgba(255,255,255,0.75)",
+    boxShadow: "0 30px 70px rgba(92, 54, 24, 0.16)",
+  },
+  heroTopRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 18,
+    flexWrap: "wrap",
   },
   todayLabel: {
     fontSize: 12,
-    fontWeight: 850,
-    color: "#64748b",
-    marginBottom: 12,
-    letterSpacing: "0.08em",
+    fontWeight: 900,
+    color: "#9a3412",
+    marginBottom: 10,
+    letterSpacing: "0.1em",
     textTransform: "uppercase",
   },
-  todayRow: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 18,
-    marginBottom: 28,
-    flexWrap: "wrap",
-  },
   todayMemberCompact: {
-    minWidth: 180,
-    padding: "12px 22px",
-    borderRadius: 18,
-    background: "#eff6ff",
-    fontSize: 34,
+    display: "inline-flex",
+    alignItems: "center",
+    minHeight: 70,
+    padding: "12px 24px",
+    borderRadius: 26,
+    background:
+      "linear-gradient(135deg, rgba(120,53,15,0.12), rgba(253,230,138,0.42))",
+    border: "1px solid rgba(146,64,14,0.16)",
+    fontSize: 40,
     fontWeight: 950,
-    letterSpacing: "-0.025em",
+    letterSpacing: "-0.04em",
+    color: "#2b170e",
+  },
+  statusStack: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    alignItems: "flex-end",
+  },
+  changeBadge: {
+    padding: "8px 12px",
+    borderRadius: 999,
+    background: "#ffedd5",
+    color: "#9a3412",
+    fontSize: 12,
+    fontWeight: 950,
+    border: "1px solid #fed7aa",
+  },
+  doneBadge: {
+    padding: "8px 12px",
+    borderRadius: 999,
+    background: "#dcfce7",
+    color: "#166534",
+    fontSize: 12,
+    fontWeight: 950,
+    border: "1px solid #bbf7d0",
+  },
+  pendingBadge: {
+    padding: "8px 12px",
+    borderRadius: 999,
+    background: "#fef9c3",
+    color: "#854d0e",
+    fontSize: 12,
+    fontWeight: 950,
+    border: "1px solid #fde68a",
+  },
+  infoGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: 12,
+    margin: "22px 0",
+  },
+  infoCard: {
+    padding: 14,
+    borderRadius: 20,
+    background: "rgba(255,255,255,0.72)",
+    border: "1px solid rgba(148, 111, 82, 0.16)",
+  },
+  infoLabel: {
+    fontSize: 11,
+    fontWeight: 900,
+    color: "#8b5e3c",
+    textTransform: "uppercase",
+    letterSpacing: "0.08em",
+  },
+  infoValue: {
+    marginTop: 6,
+    fontSize: 16,
+    fontWeight: 950,
+    color: "#2b170e",
+  },
+  infoSub: {
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: 750,
+    color: "#7c5a46",
   },
   primaryButton: {
-    padding: "14px 30px",
+    width: "100%",
+    padding: "15px 24px",
     borderRadius: 999,
     border: "none",
-    background: "#2563eb",
+    background: "linear-gradient(135deg, #7c2d12, #b45309)",
     color: "white",
     fontSize: 14,
-    fontWeight: 900,
+    fontWeight: 950,
     letterSpacing: "0.04em",
     cursor: "pointer",
-    boxShadow: "0 12px 28px rgba(37, 99, 235, 0.32)",
+    boxShadow: "0 16px 34px rgba(124,45,18,0.28)",
   },
   disabledButton: {
-    background: "#94a3b8",
+    background: "#a8a29e",
     cursor: "not-allowed",
     boxShadow: "none",
   },
-  cleaningSection: {
-    maxWidth: 720,
-    margin: "0 auto",
-    padding: 18,
-    borderRadius: 20,
-    background: "#f8fafc",
-    border: "1px solid #e2e8f0",
-  },
-  cleaningSectionTitle: {
-    textAlign: "left",
+  message: {
+    marginTop: 16,
+    padding: "10px 12px",
+    borderRadius: 16,
+    background: "#fff7ed",
+    color: "#9a3412",
     fontSize: 13,
+    fontWeight: 850,
+  },
+  cleaningSection: {
+    marginTop: 18,
+    padding: 20,
+    borderRadius: 28,
+    background: "rgba(255,255,255,0.72)",
+    border: "1px solid rgba(255,255,255,0.75)",
+    boxShadow: "0 20px 48px rgba(92,54,24,0.1)",
+  },
+  sectionHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  sectionKicker: {
+    fontSize: 11,
     fontWeight: 950,
-    marginBottom: 12,
-    letterSpacing: "0.04em",
+    color: "#9a3412",
+    letterSpacing: "0.12em",
+    textTransform: "uppercase",
+  },
+  sectionTitle: {
+    margin: "4px 0 0",
+    fontSize: 20,
+    fontWeight: 950,
+    letterSpacing: "-0.03em",
+  },
+  cleaningList: {
+    display: "grid",
+    gap: 10,
   },
   cleaningDutyRow: {
     display: "grid",
-    gridTemplateColumns: "1.3fr 1fr 0.8fr 1fr",
+    gridTemplateColumns: "1.5fr 0.8fr 1fr",
     gap: 10,
     alignItems: "center",
-    padding: "10px 0",
-    borderTop: "1px solid #e2e8f0",
+    padding: 14,
+    borderRadius: 18,
+    background: "#fffaf3",
+    border: "1px solid rgba(146,64,14,0.12)",
   },
   cleaningDutyRowMobile: {
-    gridTemplateColumns: "1fr 1fr",
+    gridTemplateColumns: "1fr",
     textAlign: "left",
-    rowGap: 8,
   },
   cleaningDutyDate: {
     fontSize: 13,
-    fontWeight: 850,
-    textAlign: "left",
+    fontWeight: 900,
+    color: "#7c5a46",
   },
   cleaningDutyMember: {
-    fontSize: 13,
+    marginTop: 3,
+    fontSize: 16,
     fontWeight: 950,
+    color: "#24160f",
   },
   cleaningDutyArea: {
     fontSize: 13,
-    fontWeight: 900,
-    color: "#2563eb",
+    fontWeight: 950,
+    color: "#1d4ed8",
   },
   cleaningCompleteButton: {
-    padding: "9px 12px",
+    padding: "10px 14px",
     borderRadius: 999,
     border: "none",
-    background: "#2563eb",
+    background: "#1d4ed8",
     color: "#ffffff",
     fontSize: 12,
-    fontWeight: 900,
-    letterSpacing: "0.03em",
+    fontWeight: 950,
     cursor: "pointer",
   },
   cleaningCompleteButtonDisabled: {
-    background: "#cbd5e1",
-    color: "#64748b",
+    background: "#d6d3d1",
+    color: "#78716c",
     cursor: "not-allowed",
-  },
-  message: {
-    marginTop: 18,
-    fontSize: 13,
-    fontWeight: 800,
-    color: "#2563eb",
-    letterSpacing: "0.02em",
   },
   commandArea: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr 1fr",
     gap: 10,
     width: "100%",
-    margin: "22px 0 18px",
+    margin: "20px 0 18px",
   },
   commandAreaMobile: {
     gridTemplateColumns: "1fr",
-    gap: 8,
   },
   tabButton: {
     width: "100%",
-    minHeight: 44,
-    padding: "10px 8px",
+    minHeight: 46,
+    padding: "11px 8px",
     borderRadius: 999,
     fontSize: 12,
     fontWeight: 950,
     letterSpacing: "0.04em",
     cursor: "pointer",
-    boxShadow: "0 8px 22px rgba(15, 23, 42, 0.08)",
+    boxShadow: "0 12px 26px rgba(92,54,24,0.08)",
     whiteSpace: "nowrap",
   },
   ruleButton: {
-    border: "1px solid #fde68a",
-    background: "#fffbeb",
-    color: "#92400e",
+    border: "1px solid #fed7aa",
+    background: "#fff7ed",
+    color: "#9a3412",
   },
   secondaryButton: {
     border: "1px solid #cbd5e1",
     background: "rgba(255,255,255,0.95)",
-    color: "#0f172a",
+    color: "#1e293b",
   },
   mapTabButton: {
     border: "1px solid #bfdbfe",
     background: "#eff6ff",
-    color: "#2563eb",
+    color: "#1d4ed8",
   },
   calendarPanel: {
     overflow: "visible",
@@ -1049,31 +1269,26 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     gap: 18,
-    marginBottom: 8,
-    height: 48,
+    marginBottom: 10,
+    height: 50,
   },
   monthButton: {
     width: 44,
     height: 44,
-    borderRadius: 12,
-    border: "1px solid #e2e8f0",
+    borderRadius: 15,
+    border: "1px solid rgba(146,64,14,0.12)",
     background: "#ffffff",
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 950,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
     cursor: "pointer",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-    padding: 0,
+    boxShadow: "0 8px 18px rgba(92,54,24,0.08)",
   },
   monthTitle: {
-    minWidth: 220,
+    minWidth: 230,
     textAlign: "center",
-    fontSize: 26,
+    fontSize: 27,
     fontWeight: 950,
-    letterSpacing: "-0.03em",
-    lineHeight: "44px",
+    letterSpacing: "-0.04em",
   },
   calendarScroll: {
     overflowX: "auto",
@@ -1083,7 +1298,7 @@ const styles = {
   weekGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
-    gap: 4,
+    gap: 6,
     marginBottom: 6,
   },
   weekGridMobile: {
@@ -1093,30 +1308,50 @@ const styles = {
     display: "grid",
     gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
     gridAutoRows: "118px",
-    gap: 4,
+    gap: 6,
     paddingBottom: 18,
   },
   calendarGridMobile: {
     minWidth: 720,
-    gridAutoRows: "104px",
+    gridAutoRows: "106px",
   },
   weekHeader: {
-    height: 26,
+    height: 28,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     fontSize: 11,
-    fontWeight: 900,
-    letterSpacing: "0.06em",
-    color: "#2563eb",
-    borderBottom: "2px solid #2563eb",
+    fontWeight: 950,
+    letterSpacing: "0.08em",
+    color: "#9a3412",
   },
   dayCell: {
     height: 118,
-    borderRadius: 14,
+    borderRadius: 18,
     padding: 10,
     boxSizing: "border-box",
     overflow: "hidden",
+    background: "rgba(255,255,255,0.9)",
+    border: "1px solid rgba(146,64,14,0.12)",
+    boxShadow: "0 8px 18px rgba(92,54,24,0.05)",
+  },
+  dayMuted: {
+    background: "#e7e5e4",
+    color: "#a8a29e",
+  },
+  dayDone: {
+    background: "#dcfce7",
+    border: "1px solid #86efac",
+  },
+  dayToday: {
+    background: "#fef3c7",
+    border: "2px solid #f59e0b",
+  },
+  dayWeekend: {
+    background: "#e2e8f0",
+  },
+  dayHoliday: {
+    background: "#fee2e2",
   },
   dayNumber: {
     fontWeight: 950,
@@ -1133,23 +1368,25 @@ const styles = {
     textAlign: "center",
     fontWeight: 950,
     fontSize: 13,
-    letterSpacing: "-0.01em",
     whiteSpace: "nowrap",
     overflow: "hidden",
     textOverflow: "ellipsis",
   },
   changedMark: {
-    marginTop: 6,
+    margin: "7px auto 0",
+    width: "fit-content",
+    padding: "3px 7px",
+    borderRadius: 999,
     fontSize: 10,
-    fontWeight: 900,
-    color: "#2563eb",
-    textAlign: "center",
-    letterSpacing: "0.04em",
+    fontWeight: 950,
+    color: "#9a3412",
+    background: "#ffedd5",
   },
   modalOverlay: {
     position: "fixed",
     inset: 0,
-    background: "rgba(15, 23, 42, 0.45)",
+    background: "rgba(28, 18, 12, 0.52)",
+    backdropFilter: "blur(6px)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -1158,29 +1395,29 @@ const styles = {
   },
   modalCard: {
     width: "100%",
-    maxWidth: 420,
-    background: "#ffffff",
-    borderRadius: 24,
+    maxWidth: 430,
+    background: "#fffaf3",
+    borderRadius: 26,
     padding: 24,
-    boxShadow: "0 24px 70px rgba(15, 23, 42, 0.25)",
+    boxShadow: "0 28px 80px rgba(28,18,12,0.34)",
   },
   rulesModalCard: {
     width: "100%",
-    maxWidth: 780,
+    maxWidth: 800,
     maxHeight: "88vh",
     overflowY: "auto",
-    background: "#ffffff",
-    borderRadius: 24,
+    background: "#fffaf3",
+    borderRadius: 26,
     padding: 24,
-    boxShadow: "0 24px 70px rgba(15, 23, 42, 0.25)",
+    boxShadow: "0 28px 80px rgba(28,18,12,0.34)",
   },
   mapModalCard: {
     width: "100%",
-    maxWidth: 920,
-    background: "#ffffff",
-    borderRadius: 24,
+    maxWidth: 940,
+    background: "#fffaf3",
+    borderRadius: 26,
     padding: 22,
-    boxShadow: "0 24px 70px rgba(15, 23, 42, 0.25)",
+    boxShadow: "0 28px 80px rgba(28,18,12,0.34)",
   },
   modalHeader: {
     display: "flex",
@@ -1191,21 +1428,20 @@ const styles = {
   },
   modalTitle: {
     margin: 0,
-    fontSize: 24,
+    fontSize: 25,
     fontWeight: 950,
-    letterSpacing: "-0.03em",
+    letterSpacing: "-0.04em",
   },
   modalSubText: {
     marginTop: 6,
     fontSize: 13,
     fontWeight: 700,
-    color: "#64748b",
-    letterSpacing: "0.01em",
+    color: "#7c5a46",
   },
   modalDate: {
     marginTop: 6,
     marginBottom: 18,
-    color: "#64748b",
+    color: "#7c5a46",
     fontWeight: 850,
   },
   formLabel: {
@@ -1213,7 +1449,7 @@ const styles = {
     textAlign: "left",
     fontSize: 12,
     fontWeight: 900,
-    color: "#334155",
+    color: "#5c3b2a",
     marginTop: 12,
     marginBottom: 6,
     letterSpacing: "0.05em",
@@ -1223,11 +1459,11 @@ const styles = {
     width: "100%",
     boxSizing: "border-box",
     padding: "12px 14px",
-    borderRadius: 12,
-    border: "1px solid #cbd5e1",
+    borderRadius: 14,
+    border: "1px solid #d6d3d1",
+    background: "#ffffff",
     fontSize: 14,
     fontWeight: 650,
-    letterSpacing: "0.01em",
   },
   modalActions: {
     display: "flex",
@@ -1238,112 +1474,64 @@ const styles = {
   cancelButton: {
     padding: "11px 18px",
     borderRadius: 999,
-    border: "1px solid #cbd5e1",
+    border: "1px solid #d6d3d1",
     background: "#ffffff",
     fontSize: 13,
     fontWeight: 900,
-    letterSpacing: "0.03em",
     cursor: "pointer",
   },
   saveButton: {
     padding: "11px 20px",
     borderRadius: 999,
     border: "none",
-    background: "#2563eb",
+    background: "#7c2d12",
     color: "#ffffff",
     fontSize: 13,
     fontWeight: 950,
-    letterSpacing: "0.03em",
     cursor: "pointer",
-  },
-  mapViewer: {
-    overflow: "hidden",
-    borderRadius: 18,
-    border: "1px solid #e2e8f0",
-    background: "#f8fafc",
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.7)",
-  },
-  mapToolbar: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "12px 14px",
-    background: "#ffffff",
-    borderBottom: "1px solid #e2e8f0",
-  },
-  mapToolbarTitle: {
-    fontSize: 12,
-    fontWeight: 950,
-    color: "#334155",
-    letterSpacing: "0.08em",
-    textTransform: "uppercase",
-  },
-  mapToolbarBadge: {
-    padding: "5px 10px",
-    borderRadius: 999,
-    background: "#eff6ff",
-    color: "#2563eb",
-    fontSize: 11,
-    fontWeight: 950,
-    letterSpacing: "0.05em",
-  },
-  mapImageFrame: {
-    padding: 12,
-    background: "#f8fafc",
-  },
-  cleaningMapImage: {
-    width: "100%",
-    maxHeight: "72vh",
-    objectFit: "contain",
-    borderRadius: 0,
-    border: "1px solid #cbd5e1",
-    display: "block",
-    background: "#ffffff",
   },
   ruleList: {
     textAlign: "left",
     lineHeight: 1.72,
   },
   ruleSection: {
-    padding: "14px 16px",
-    borderRadius: 16,
+    padding: "15px 16px",
+    borderRadius: 18,
     marginBottom: 12,
-    border: "1px solid rgba(148, 163, 184, 0.25)",
+    border: "1px solid rgba(146,64,14,0.12)",
   },
-  ruleSectionMorning: {
-    background: "#fffbeb",
+  ruleMorning: {
+    background: "#fff7ed",
   },
-  ruleSectionEvening: {
+  ruleEvening: {
     background: "#eef2ff",
   },
-  ruleSectionCleaning: {
+  ruleMachine: {
     background: "#f0fdf4",
   },
-  ruleSectionFloor: {
+  ruleFloor: {
     background: "#f8fafc",
   },
   ruleTitle: {
     fontSize: 15,
     fontWeight: 950,
     marginBottom: 8,
-    letterSpacing: "0.02em",
   },
   ruleBullets: {
     margin: 0,
     paddingLeft: 20,
     fontSize: 14,
     fontWeight: 650,
-    color: "#334155",
-    letterSpacing: "0.005em",
+    color: "#3f2a1f",
   },
   machineOverviewCard: {
     marginTop: 12,
     marginBottom: 12,
     borderRadius: 18,
     overflow: "hidden",
-    border: "1px solid #dbeafe",
+    border: "1px solid #bbf7d0",
     background: "#ffffff",
-    boxShadow: "0 10px 24px rgba(15, 23, 42, 0.08)",
+    boxShadow: "0 10px 24px rgba(28,18,12,0.08)",
   },
   machineOverviewHeader: {
     display: "flex",
@@ -1351,13 +1539,13 @@ const styles = {
     alignItems: "center",
     gap: 12,
     padding: "12px 14px",
-    background: "#eff6ff",
-    borderBottom: "1px solid #dbeafe",
+    background: "#f0fdf4",
+    borderBottom: "1px solid #bbf7d0",
   },
   machineOverviewTitle: {
     fontSize: 13,
     fontWeight: 950,
-    color: "#1e3a8a",
+    color: "#166534",
     letterSpacing: "0.06em",
     textTransform: "uppercase",
   },
@@ -1366,18 +1554,14 @@ const styles = {
     fontSize: 12,
     fontWeight: 700,
     color: "#475569",
-    letterSpacing: "0.01em",
   },
   machineOverviewBadge: {
     padding: "5px 10px",
     borderRadius: 999,
     background: "#ffffff",
-    color: "#2563eb",
+    color: "#166534",
     fontSize: 11,
     fontWeight: 950,
-    letterSpacing: "0.06em",
-    whiteSpace: "nowrap",
-    textTransform: "uppercase",
   },
   machineOverviewImage: {
     width: "100%",
@@ -1401,25 +1585,23 @@ const styles = {
   partTab: {
     padding: "10px 8px",
     borderRadius: 999,
-    border: "1px solid #cbd5e1",
+    border: "1px solid #d6d3d1",
     background: "#ffffff",
-    color: "#334155",
+    color: "#3f2a1f",
     fontSize: 12,
     fontWeight: 950,
-    letterSpacing: "0.02em",
     cursor: "pointer",
   },
   partTabActive: {
     padding: "10px 8px",
     borderRadius: 999,
-    border: "1px solid #2563eb",
-    background: "#2563eb",
+    border: "1px solid #7c2d12",
+    background: "#7c2d12",
     color: "#ffffff",
     fontSize: 12,
     fontWeight: 950,
-    letterSpacing: "0.02em",
     cursor: "pointer",
-    boxShadow: "0 8px 22px rgba(37, 99, 235, 0.25)",
+    boxShadow: "0 8px 22px rgba(124,45,18,0.25)",
   },
   partDetailCard: {
     display: "grid",
@@ -1429,11 +1611,10 @@ const styles = {
     padding: 14,
     borderRadius: 18,
     background: "#ffffff",
-    border: "1px solid #dcfce7",
+    border: "1px solid #bbf7d0",
   },
   partDetailCardMobile: {
     gridTemplateColumns: "1fr",
-    alignItems: "stretch",
   },
   partImageBox: {
     height: 160,
@@ -1461,20 +1642,16 @@ const styles = {
     display: "inline-block",
     padding: "5px 10px",
     borderRadius: 999,
-    background: "#eff6ff",
-    color: "#2563eb",
+    background: "#dcfce7",
+    color: "#166534",
     fontSize: 11,
     fontWeight: 950,
     marginBottom: 8,
-    letterSpacing: "0.06em",
-    textTransform: "uppercase",
   },
   partTitle: {
     fontSize: 17,
     fontWeight: 950,
     marginBottom: 8,
-    color: "#0f172a",
-    letterSpacing: "-0.015em",
   },
   partSteps: {
     margin: 0,
@@ -1482,7 +1659,46 @@ const styles = {
     fontSize: 14,
     fontWeight: 650,
     color: "#334155",
-    letterSpacing: "0.005em",
+  },
+  mapViewer: {
+    overflow: "hidden",
+    borderRadius: 18,
+    border: "1px solid #d6d3d1",
+    background: "#ffffff",
+  },
+  mapToolbar: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "12px 14px",
+    background: "#fff7ed",
+    borderBottom: "1px solid #fed7aa",
+  },
+  mapToolbarTitle: {
+    fontSize: 12,
+    fontWeight: 950,
+    color: "#7c2d12",
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+  },
+  mapToolbarBadge: {
+    padding: "5px 10px",
+    borderRadius: 999,
+    background: "#ffffff",
+    color: "#9a3412",
+    fontSize: 11,
+    fontWeight: 950,
+  },
+  mapImageFrame: {
+    padding: 12,
+    background: "#ffffff",
+  },
+  cleaningMapImage: {
+    width: "100%",
+    maxHeight: "72vh",
+    objectFit: "contain",
+    border: "1px solid #d6d3d1",
+    display: "block",
+    background: "#ffffff",
   },
 };
-// test

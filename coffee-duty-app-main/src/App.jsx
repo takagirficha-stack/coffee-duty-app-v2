@@ -211,8 +211,22 @@ function useWindowWidth() {
 }
 
 function MonthButton({ children, onClick }) {
+  const [pressed, setPressed] = useState(false);
+
   return (
-    <button type="button" onClick={onClick} style={styles.monthButton}>
+    <button
+      type="button"
+      onClick={onClick}
+      onMouseDown={() => setPressed(true)}
+      onMouseUp={() => setPressed(false)}
+      onMouseLeave={() => setPressed(false)}
+      onTouchStart={() => setPressed(true)}
+      onTouchEnd={() => setPressed(false)}
+      style={{
+        ...styles.monthButton,
+        ...(pressed ? styles.monthButtonPressed : {}),
+      }}
+    >
       {children}
     </button>
   );
@@ -1303,16 +1317,31 @@ const styles = {
     height: 50,
   },
   monthButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 15,
-    border: "1px solid rgba(146,64,14,0.12)",
-    background: "#ffffff",
-    fontSize: 22,
-    fontWeight: 950,
-    cursor: "pointer",
-    boxShadow: "0 8px 18px rgba(92,54,24,0.08)",
-  },
+  width: 56,
+  height: 56,
+  borderRadius: 18,
+  border: "1px solid rgba(146,64,14,0.12)",
+  background: "#fffaf5",
+  fontSize: 28,
+  fontWeight: 700,
+  lineHeight: 1,
+  color: "#2b1d16",
+  cursor: "pointer",
+  boxShadow:
+    "0 6px 14px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.7)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: 0,
+  transition:
+    "transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease",
+},
+  monthButtonPressed: {
+  transform: "translateY(2px) scale(0.96)",
+  boxShadow:
+    "0 2px 6px rgba(0,0,0,0.10), inset 0 2px 4px rgba(0,0,0,0.08)",
+  background: "#efe4d8",
+},
   monthTitle: {
     minWidth: 230,
     textAlign: "center",

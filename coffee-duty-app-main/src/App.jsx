@@ -8,6 +8,20 @@ const MACHINE_OVERVIEW_URL = "/machine-overview.png";
 const PART_TANK_URL = "/part-tank.png";
 const PART_HOLDER_URL = "/part-holder.png";
 const PART_TRAY_URL = "/part-tray.png";
+const CACHE_KEY = "coffeeDutyAppCacheV4";
+const SLACK_WEBHOOK_URL = "";
+const WEATHER_URL =
+  "https://api.open-meteo.com/v1/forecast?latitude=35.7295&longitude=139.7190&current=temperature_2m,weather_code&timezone=Asia%2FTokyo";
+
+function getWeatherIcon(code) {
+  if ([0, 1].includes(code)) return "☀";
+  if ([2, 3].includes(code)) return "⛅";
+  if ([45, 48].includes(code)) return "🌫";
+  if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) return "🌧";
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return "❄";
+  if ([95, 96, 99].includes(code)) return "⛈";
+  return "☕";
+}
 
 const MONTH_NAMES = [
   "January",
@@ -295,6 +309,22 @@ function AppMotionStyles() {
         100% { transform: translateY(0) scale(1); opacity: 1; }
       }
 
+      @keyframes checkPop {
+        0% { transform: scale(0.5); opacity: 0; }
+        45% { transform: scale(1.12); opacity: 1; }
+        100% { transform: scale(1); opacity: 1; }
+      }
+
+      @keyframes skeletonShine {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+      }
+
+      @keyframes confettiFall {
+        0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+        100% { transform: translateY(110vh) rotate(520deg); opacity: 0; }
+      }
+
       .soft-card,
       .info-hover-card,
       .cleaning-hover-row,
@@ -341,11 +371,38 @@ function AppMotionStyles() {
         animation: toastSlideIn 0.22s ease both;
       }
 
+      .skeleton-shine {
+        background: linear-gradient(90deg, #f3e8dc 25%, #fff7ed 50%, #f3e8dc 75%);
+        background-size: 200% 100%;
+        animation: skeletonShine 1.1s ease infinite;
+      }
+
+      .check-pop {
+        animation: checkPop 0.55s ease both;
+      }
+
       .calendar-panel-open {
         animation: calendarOpen 0.28s ease both;
       }
 
+      @media (max-width: 980px) {
+        .soft-card {
+          border-radius: 26px !important;
+        }
+      }
+
       @media (max-width: 720px) {
+        body {
+          overflow-x: hidden;
+        }
+
+        .soft-card {
+          border-radius: 22px !important;
+        }
+
+        button {
+          touch-action: manipulation;
+        }
         .soft-card:hover,
         .info-hover-card:hover,
         .cleaning-hover-row:hover,
@@ -383,12 +440,25 @@ export default function App() {
   const [month, setMonth] = useState(today.getMonth() + 1);
 
   const [showCalendar, setShowCalendar] = useState(false);
+  const [mobileTab, setMobileTab] = useState("today");
+  const [showConfetti, setShowConfetti] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [selectedMachinePart, setSelectedMachinePart] = useState("tank");
 
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [showCheck, setShowCheck] = useState(false);
+  const [isOnline, setIsOnline] = useState(() =>
+    typeof navigator === "undefined" ? true : navigator.onLine
+  );
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [canInstall, setCanInstall] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("coffee-dark") === "1";
+  });
+  const [weather, setWeather] = useState({ label: "東池袋", icon: "☕", temp: "--" });
 
   const [selectedDate, setSelectedDate] = useState(null);
   const [changeName, setChangeName] = useState("");
@@ -438,50 +508,180 @@ export default function App() {
   const baseMember =
     apiBaseMember || getBaseCoffeeMember(today, todayActiveMembers, holidays);
 
-  async function loadData() {
+  function applyApiData(data) {
+    setMembers(data.members || []);
+    setMemberVersions(data.memberVersions || []);
+    setCleaningMemberVersions(data.cleaningMemberVersions || []);
+    setHolidays(data.holidays || []);
+    setAssignmentChanges(data.assignmentChanges || []);
+    setCleaningMembers(data.cleaningMembers || []);
+    setAppVersion(data.appVersion || "v2.0.0");
+
+    setApiTodayMember(data.todayMember || "");
+    setApiBaseMember(data.baseMember || "");
+    setApiNextDuty(data.nextDuty || null);
+    setApiHasChange(!!data.hasChange);
+    setApiRecord(data.record || null);
+
+    const coffeeMap = {};
+    (data.records || []).forEach((r) => {
+      const key = normalizeDateKey(r.date);
+      if (key) coffeeMap[key] = { ...r, date: key };
+    });
+    setRecords(coffeeMap);
+
+    const cleaningMap = {};
+    (data.cleaningRecords || []).forEach((r) => {
+      const key = normalizeDateKey(r.date);
+      if (key) cleaningMap[key] = { ...r, date: key };
+    });
+    setCleaningRecords(cleaningMap);
+  }
+
+  function loadCachedData() {
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (!cached) return false;
+
+      const data = JSON.parse(cached);
+      applyApiData(data);
+      return true;
+    } catch (error) {
+      console.error(error);
+      return false;
+    }
+  }
+
+  async function loadData(forceRefresh = false) {
     setLoading(true);
     setMessage("");
 
+    const hasCache = loadCachedData();
+    if (hasCache && !forceRefresh) {
+      setLoading(false);
+    }
+
+    if (!navigator.onLine) {
+      setMessage("Offline mode: showing the latest saved data.");
+      setLoading(false);
+      return;
+    }
+
     try {
-      const res = await fetch(`${API_URL}?t=${Date.now()}`);
+      const url = forceRefresh ? `${API_URL}?t=${Date.now()}` : API_URL;
+      const res = await fetch(url);
       const data = await res.json();
 
-      setMembers(data.members || []);
-      setMemberVersions(data.memberVersions || []);
-      setCleaningMemberVersions(data.cleaningMemberVersions || []);
-      setHolidays(data.holidays || []);
-      setAssignmentChanges(data.assignmentChanges || []);
-      setCleaningMembers(data.cleaningMembers || []);
-      setAppVersion(data.appVersion || "v2.0.0");
-
-      setApiTodayMember(data.todayMember || "");
-      setApiBaseMember(data.baseMember || "");
-      setApiNextDuty(data.nextDuty || null);
-      setApiHasChange(!!data.hasChange);
-      setApiRecord(data.record || null);
-
-      const coffeeMap = {};
-      (data.records || []).forEach((r) => {
-        const key = normalizeDateKey(r.date);
-        if (key) coffeeMap[key] = { ...r, date: key };
-      });
-      setRecords(coffeeMap);
-
-      const cleaningMap = {};
-      (data.cleaningRecords || []).forEach((r) => {
-        const key = normalizeDateKey(r.date);
-        if (key) cleaningMap[key] = { ...r, date: key };
-      });
-      setCleaningRecords(cleaningMap);
+      localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+      applyApiData(data);
     } catch {
-      setMessage("Failed to load data. Please check the API connection.");
+      if (!hasCache) {
+        setMessage("Failed to load data. Please check the API connection.");
+      } else {
+        setMessage("Could not update. Showing cached data.");
+      }
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    loadData();
+    loadCachedData();
+    loadData(false);
+  }, []);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      loadData(true);
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      setMessage("Offline mode: showing the latest saved data.");
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    const autoReload = setInterval(() => {
+      loadData(true);
+    }, 300000);
+
+    return () => clearInterval(autoReload);
+  }, []);
+
+  useEffect(() => {
+    let startY = 0;
+
+    const handleTouchStart = (e) => {
+      startY = e.touches[0].clientY;
+    };
+
+    const handleTouchEnd = (e) => {
+      const endY = e.changedTouches[0].clientY;
+      if (window.scrollY === 0 && endY - startY > 90) {
+        loadData(true);
+      }
+    };
+
+    window.addEventListener("touchstart", handleTouchStart, { passive: true });
+    window.addEventListener("touchend", handleTouchEnd, { passive: true });
+
+    return () => {
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("coffee-dark", darkMode ? "1" : "0");
+  }, [darkMode]);
+
+  useEffect(() => {
+    async function loadWeather() {
+      try {
+        const res = await fetch(WEATHER_URL);
+        const data = await res.json();
+        const temp = Math.round(data?.current?.temperature_2m);
+        const code = Number(data?.current?.weather_code ?? -1);
+        setWeather({
+          label: "東池袋",
+          icon: getWeatherIcon(code),
+          temp: Number.isFinite(temp) ? temp : "--",
+        });
+      } catch {
+        setWeather({ label: "東池袋", icon: "☕", temp: "--" });
+      }
+    }
+
+    loadWeather();
+    const timer = setInterval(loadWeather, 30 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
+
+    const handleBeforeInstallPrompt = (event) => {
+      event.preventDefault();
+      setInstallPrompt(event);
+      setCanInstall(true);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    };
   }, []);
 
   async function postData(data) {
@@ -523,11 +723,37 @@ export default function App() {
           completedAt: new Date().toISOString(),
         },
       }));
-      setMessage("Coffee cleaning report has been saved.");
-      setTimeout(() => setMessage(""), 2500);
+
+      setShowCheck(true);
+      setShowConfetti(true);
+      setMessage("Slack notification sent: Coffee cleaning report has been saved.");
+
+      try {
+        if (SLACK_WEBHOOK_URL) {
+          await fetch(SLACK_WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: `☕ Coffee completed by ${todayMember}`,
+          }),
+        });
+        }
+      } catch {}
+      setTimeout(() => setShowCheck(false), 1100);
+      setTimeout(() => setShowConfetti(false), 1800);
+      setTimeout(() => setMessage(""), 2800);
     } catch {
       setMessage("Failed to save the report.");
     }
+  };
+
+  const installApp = async () => {
+    if (!installPrompt) return;
+
+    installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
+    setCanInstall(false);
   };
 
   const saveCleaningComplete = async (duty) => {
@@ -649,12 +875,33 @@ export default function App() {
   };
 
   return (
-    <div style={styles.page}>
+    <div style={{ ...styles.page, ...(darkMode ? styles.pageDark : {}) }}>
       <AppMotionStyles />
       <div style={styles.decorCircleOne} />
       <div style={styles.decorCircleTwo} />
 
       <div style={styles.appShell}>
+        <div style={styles.stickyHeader}>
+          <div style={styles.stickyInner}>
+            <div style={styles.stickyTodayLabel}>Today</div>
+            <div style={styles.stickyTodayMember}>{todayMember || "-"}</div>
+            <div style={styles.progressRingWrap}>
+              <div
+                style={{
+                  ...styles.progressRing,
+                  background: todayDone
+                    ? "conic-gradient(#7c2d12 360deg, #ead7c5 0deg)"
+                    : "conic-gradient(#f59e0b 180deg, #ead7c5 0deg)",
+                }}
+              >
+                <div style={styles.progressRingInner}>
+                  {todayDone ? "✓" : "◔"}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <header style={styles.header}>
           <div>
             <div style={styles.kicker}>Coffee Dolce Operations</div>
@@ -662,11 +909,32 @@ export default function App() {
             <div style={styles.subtitle}>
               A small daily routine, beautifully managed.
             </div>
+            <div style={styles.quoteText}>
+              “Keep the coffee flowing ☕”
+            </div>
+          </div>
+
+          <div style={styles.weatherBadge}>
+            {weather.icon} {weather.temp}°C · {weather.label}
           </div>
 
           <div style={styles.headerRight}>
+            {!isOnline && <div style={styles.offlineBadge}>Offline</div>}
             <div style={styles.versionBadge}>{appVersion}</div>
-            <button type="button" onClick={loadData} style={styles.refreshButton}>
+            {canInstall && (
+              <button type="button" onClick={installApp} style={styles.installButton}>
+                Install App
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setDarkMode((v) => !v)}
+              style={styles.darkModeButton}
+            >
+              {darkMode ? "Light" : "Dark"}
+            </button>
+
+            <button type="button" onClick={() => loadData(true)} style={styles.refreshButton}>
               Refresh
             </button>
           </div>
@@ -675,10 +943,17 @@ export default function App() {
         <main className="soft-card" style={styles.heroCard}>
           <div style={styles.heroTopRow}>
             <div>
-              <div style={styles.todayLabel}>Today's Coffee Cleaning Duty</div>
+              <div style={styles.todayHeroCard}>
+                <div style={styles.todayHeroKicker}>☕ TODAY DUTY</div>
+                <div style={styles.todayLabel}>Today's Coffee Cleaning Duty</div>
               <div style={styles.todayMemberCompact}>
-                {loading ? "Loading..." : todayMember || "No duty today"}
+                {loading && !todayMember ? (
+                  <span style={styles.skeletonText}>Loading...</span>
+                ) : (
+                  todayMember || "No duty today"
+                )}
               </div>
+            </div>
             </div>
 
             <div style={styles.statusStack}>
@@ -694,6 +969,35 @@ export default function App() {
                 <div style={styles.pendingBadge}>Waiting Report</div>
               )}
             </div>
+          </div>
+
+          <div style={styles.dashboardGrid}>
+            <div className="info-hover-card" style={styles.dashboardCard}>
+              <div style={styles.infoLabel}>Monthly Completion</div>
+              <div style={styles.dashboardValue}>
+                {Object.keys(records).filter((d) => d.startsWith(`${year}-${String(month).padStart(2, "0")}`)).length}
+              </div>
+            </div>
+            <div className="info-hover-card" style={styles.dashboardCard}>
+              <div style={styles.infoLabel}>Changes</div>
+              <div style={styles.dashboardValue}>
+                {assignmentChanges.filter((a) => String(a.date || "").startsWith(`${year}-${String(month).padStart(2, "0")}`)).length}
+              </div>
+            </div>
+            <div className="info-hover-card" style={styles.dashboardCard}>
+              <div style={styles.infoLabel}>Status</div>
+              <div style={styles.dashboardValue}>{todayDone ? "Done" : "Waiting"}</div>
+            </div>
+          </div>
+
+          <div style={styles.heatmapRow}>
+            {days
+              .filter((d) => d.getMonth() + 1 === month)
+              .map((d) => {
+                const key = toDateKey(d);
+                const done = isCoffeeRecordDone(records[key]);
+                return <div key={key} title={key} style={done ? styles.heatmapDotDone : styles.heatmapDot} />;
+              })}
           </div>
 
           <div style={styles.infoGrid}>
@@ -729,7 +1033,12 @@ export default function App() {
             {todayDone ? "Completed" : "Complete Coffee Cleaning"}
           </button>
 
-          {message && <div className="toast-message" style={styles.message}>{message}</div>}
+          {message && (
+            <div className="toast-message" style={styles.message}>
+              <span style={styles.slackIcon}>#</span>
+              <span>{message}</span>
+            </div>
+          )}
         </main>
 
         <section style={styles.cleaningSection}>
@@ -789,8 +1098,28 @@ export default function App() {
           </div>
         </section>
 
+        {isMobile && (
+          <div style={styles.mobileTabs}>
+            {[
+              ["today", "Today"],
+              ["calendar", "Calendar"],
+              ["rules", "Rules"],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setMobileTab(key)}
+                style={mobileTab === key ? styles.mobileTabActive : styles.mobileTab}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div
           style={{
+            ...(isMobile && mobileTab !== "today" ? { display: "none" } : {}),
             ...styles.commandArea,
             ...(isMobile ? styles.commandAreaMobile : {}),
           }}
@@ -822,6 +1151,7 @@ export default function App() {
 
         <section
           style={{
+            ...(isMobile && mobileTab !== "calendar" ? { display: "none" } : {}),
             ...styles.calendarPanel,
             maxHeight: showCalendar ? 980 : 0,
             opacity: showCalendar ? 1 : 0,
@@ -896,7 +1226,13 @@ export default function App() {
                       ...cellStyle,
                       cursor: canChange ? "pointer" : "default",
                     }}
-                    onClick={() => openChangeForm(date)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      openChangeForm(date);
+                    }}
+                    onClick={() => {
+                      if (!isMobile) openChangeForm(date);
+                    }}
                     title={canChange ? "Click to change assignee" : ""}
                   >
                     <div style={styles.dayNumber}>{date.getDate()}</div>
@@ -920,6 +1256,27 @@ export default function App() {
           </div>
         </section>
       </div>
+
+      {showCheck && (
+        <div style={styles.checkOverlay}>
+          <div style={styles.checkCircle}>✓</div>
+        </div>
+      )}
+
+      {showConfetti && (
+        <div style={styles.confettiWrap}>
+          {Array.from({ length: 28 }).map((_, i) => (
+            <div
+              key={i}
+              style={{
+                ...styles.confetti,
+                left: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 0.6}s`,
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       {showRules && (
         <div style={styles.modalOverlay} onClick={() => setShowRules(false)}>
@@ -1052,6 +1409,23 @@ export default function App() {
           <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
             <h2 style={styles.modalTitle}>Change Assignee</h2>
             <div style={styles.modalDate}>{toDateKey(selectedDate)}</div>
+            <div style={styles.historyInfoBox}>
+              <div style={styles.historyTitle}>Latest Change History</div>
+              <div style={styles.historyText}>
+                Changed by: {assignmentChanges.find((a) => a.date === toDateKey(selectedDate))?.changedBy || "-"}
+              </div>
+              <div style={styles.historyText}>
+                Reason: {assignmentChanges.find((a) => a.date === toDateKey(selectedDate))?.reason || "-"}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => window.open("https://slack.com/app_redirect?channel=general", "_blank")}
+              style={styles.slackOpenButton}
+            >
+              Open Slack
+            </button>
 
             <label style={styles.formLabel}>Changed By</label>
             <input
@@ -1099,9 +1473,170 @@ export default function App() {
 }
 
 const styles = {
+  darkModeButton: {
+    padding: "9px 13px",
+    borderRadius: 999,
+    border: "1px solid rgba(146,64,14,0.12)",
+    background: "#24160f",
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: 950,
+    cursor: "pointer",
+  },
+  weatherBadge: {
+    padding: "8px 12px",
+    borderRadius: 999,
+    background: "#fff7ed",
+    border: "1px solid #fed7aa",
+    color: "#9a3412",
+    fontSize: 12,
+    fontWeight: 950,
+  },
+  quoteText: {
+    marginTop: 8,
+    fontSize: 13,
+    fontWeight: 700,
+    color: "#7c5a46",
+    fontStyle: "italic",
+  },
+  todayHeroCard: {
+    padding: "10px 0",
+  },
+  todayHeroKicker: {
+    marginBottom: 8,
+    fontSize: 11,
+    fontWeight: 950,
+    color: "#9a3412",
+    letterSpacing: "0.12em",
+  },
+  stickyHeader: {
+    position: "sticky",
+    top: 10,
+    zIndex: 30,
+    marginBottom: 14,
+  },
+  stickyInner: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    padding: "12px 16px",
+    borderRadius: 999,
+    background: "rgba(255,255,255,0.82)",
+    backdropFilter: "blur(14px)",
+    border: "1px solid rgba(146,64,14,0.12)",
+    boxShadow: "0 14px 30px rgba(92,54,24,0.12)",
+  },
+  stickyTodayLabel: {
+    fontSize: 11,
+    fontWeight: 950,
+    color: "#9a3412",
+    textTransform: "uppercase",
+    letterSpacing: "0.08em",
+  },
+  stickyTodayMember: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: 950,
+    color: "#24160f",
+  },
+  progressRingWrap: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  progressRing: {
+    width: 48,
+    height: 48,
+    borderRadius: "50%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  progressRingInner: {
+    width: 36,
+    height: 36,
+    borderRadius: "50%",
+    background: "#fffaf3",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontWeight: 950,
+    color: "#7c2d12",
+  },
+  mobileTabs: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: 8,
+    marginBottom: 14,
+  },
+  mobileTab: {
+    padding: "11px 8px",
+    borderRadius: 999,
+    border: "1px solid #e7d4c2",
+    background: "#ffffff",
+    fontSize: 12,
+    fontWeight: 900,
+    color: "#7c2d12",
+  },
+  mobileTabActive: {
+    padding: "11px 8px",
+    borderRadius: 999,
+    border: "1px solid #7c2d12",
+    background: "#7c2d12",
+    fontSize: 12,
+    fontWeight: 900,
+    color: "#ffffff",
+  },
+  confettiWrap: {
+    position: "fixed",
+    inset: 0,
+    pointerEvents: "none",
+    overflow: "hidden",
+    zIndex: 90,
+  },
+  confetti: {
+    position: "absolute",
+    top: -20,
+    width: 10,
+    height: 18,
+    borderRadius: 3,
+    background: "#b45309",
+    animation: "confettiFall 1.6s linear forwards",
+  },
+  historyInfoBox: {
+    marginTop: 10,
+    padding: 12,
+    borderRadius: 16,
+    background: "#fff7ed",
+    border: "1px solid #fed7aa",
+  },
+  historyTitle: {
+    fontSize: 12,
+    fontWeight: 950,
+    color: "#9a3412",
+    marginBottom: 6,
+  },
+  historyText: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: "#5c3b2a",
+    marginTop: 2,
+  },
+  slackOpenButton: {
+    marginTop: 12,
+    width: "100%",
+    padding: "12px 14px",
+    borderRadius: 999,
+    border: "none",
+    background: "#4a154b",
+    color: "#ffffff",
+    fontWeight: 950,
+    cursor: "pointer",
+  },
   page: {
     minHeight: "100vh",
-    padding: "28px 14px 42px",
+    padding: "20px clamp(12px, 2vw, 28px) 42px",
     fontFamily:
       "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     background:
@@ -1110,6 +1645,49 @@ const styles = {
     letterSpacing: "0.01em",
     position: "relative",
     overflowX: "hidden",
+  },
+  pageDark: {
+    background:
+      "radial-gradient(circle at top left, rgba(180,83,9,0.18) 0, transparent 34%), radial-gradient(circle at top right, rgba(30,41,59,0.42) 0, transparent 30%), linear-gradient(135deg, #1c120c 0%, #24160f 48%, #0f172a 100%)",
+    color: "#fff7ed",
+  },
+  dashboardGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+    gap: 10,
+    margin: "18px 0 8px",
+  },
+  dashboardCard: {
+    padding: 14,
+    borderRadius: 20,
+    background: "rgba(255,255,255,0.72)",
+    border: "1px solid rgba(148, 111, 82, 0.16)",
+  },
+  dashboardValue: {
+    marginTop: 5,
+    fontSize: 20,
+    fontWeight: 950,
+    color: "#7c2d12",
+  },
+  heatmapRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 5,
+    margin: "10px 0 18px",
+  },
+  heatmapDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 4,
+    background: "#f3e8dc",
+    border: "1px solid #ead7c5",
+  },
+  heatmapDotDone: {
+    width: 12,
+    height: 12,
+    borderRadius: 4,
+    background: "#7c2d12",
+    border: "1px solid #7c2d12",
   },
   decorCircleOne: {
     position: "fixed",
@@ -1132,7 +1710,8 @@ const styles = {
     pointerEvents: "none",
   },
   appShell: {
-    maxWidth: 1000,
+    width: "100%",
+    maxWidth: 1480,
     margin: "0 auto",
     position: "relative",
     zIndex: 1,
@@ -1181,6 +1760,26 @@ const styles = {
     color: "#78350f",
     boxShadow: "0 10px 24px rgba(120, 53, 15, 0.08)",
   },
+  offlineBadge: {
+    padding: "8px 12px",
+    borderRadius: 999,
+    background: "#fee2e2",
+    border: "1px solid #fecaca",
+    fontSize: 12,
+    fontWeight: 950,
+    color: "#991b1b",
+  },
+  installButton: {
+    padding: "9px 13px",
+    borderRadius: 999,
+    border: "1px solid #dfc2a8",
+    background: "#f6eadf",
+    color: "#7c2d12",
+    fontSize: 12,
+    fontWeight: 950,
+    cursor: "pointer",
+    boxShadow: "0 10px 24px rgba(120, 53, 15, 0.08)",
+  },
   refreshButton: {
     padding: "9px 13px",
     borderRadius: 999,
@@ -1193,7 +1792,7 @@ const styles = {
     boxShadow: "0 10px 24px rgba(120, 53, 15, 0.08)",
   },
   heroCard: {
-    padding: "30px 24px",
+    padding: "clamp(18px, 3vw, 34px)",
     borderRadius: 34,
     background: "rgba(255,255,255,0.82)",
     backdropFilter: "blur(16px)",
@@ -1219,12 +1818,12 @@ const styles = {
     display: "inline-flex",
     alignItems: "center",
     minHeight: 70,
-    padding: "12px 24px",
+    padding: "12px clamp(16px, 2vw, 28px)",
     borderRadius: 26,
     background:
       "linear-gradient(135deg, rgba(120,53,15,0.12), rgba(253,230,138,0.42))",
     border: "1px solid rgba(146,64,14,0.16)",
-    fontSize: 40,
+    fontSize: "clamp(26px, 5vw, 54px)",
     fontWeight: 950,
     letterSpacing: "-0.04em",
     color: "#2b170e",
@@ -1264,7 +1863,7 @@ const styles = {
   },
   infoGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
     gap: 12,
     margin: "22px 0",
   },
@@ -1319,10 +1918,59 @@ const styles = {
     color: "#9a3412",
     fontSize: 13,
     fontWeight: 850,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  slackIcon: {
+    width: 22,
+    height: 22,
+    borderRadius: 7,
+    background: "#4a154b",
+    color: "#ffffff",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 13,
+    fontWeight: 950,
+  },
+  skeletonText: {
+    minWidth: 150,
+    height: 38,
+    borderRadius: 999,
+    color: "transparent",
+    display: "inline-block",
+    background: "linear-gradient(90deg, #f3e8dc 25%, #fff7ed 50%, #f3e8dc 75%)",
+    backgroundSize: "200% 100%",
+    animation: "skeletonShine 1.1s ease infinite",
+  },
+  checkOverlay: {
+    position: "fixed",
+    inset: 0,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    pointerEvents: "none",
+    zIndex: 80,
+  },
+  checkCircle: {
+    width: 92,
+    height: 92,
+    borderRadius: "50%",
+    background: "#7c2d12",
+    color: "#ffffff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 52,
+    fontWeight: 950,
+    boxShadow: "0 22px 60px rgba(124,45,18,0.36)",
+    animation: "checkPop 0.55s ease both",
   },
   cleaningSection: {
     marginTop: 18,
-    padding: 20,
+    padding: "clamp(16px, 2vw, 24px)",
     borderRadius: 28,
     background: "rgba(255,255,255,0.72)",
     border: "1px solid rgba(255,255,255,0.75)",
@@ -1408,7 +2056,7 @@ const styles = {
   },
   commandArea: {
     display: "grid",
-    gridTemplateColumns: "1fr 1fr 1fr",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
     gap: 10,
     width: "100%",
     margin: "20px 0 18px",
@@ -1491,6 +2139,7 @@ const styles = {
     letterSpacing: "-0.04em",
   },
   calendarScroll: {
+    width: "100%",
     overflowX: "auto",
     WebkitOverflowScrolling: "touch",
     paddingBottom: 8,
@@ -1502,7 +2151,7 @@ const styles = {
     marginBottom: 6,
   },
   weekGridMobile: {
-    minWidth: 720,
+    minWidth: 0,
   },
   calendarGrid: {
     display: "grid",
@@ -1512,8 +2161,9 @@ const styles = {
     paddingBottom: 18,
   },
   calendarGridMobile: {
-    minWidth: 720,
-    gridAutoRows: "106px",
+    minWidth: 0,
+    gridTemplateColumns: "repeat(7, minmax(44px, 1fr))",
+    gridAutoRows: "84px",
   },
   weekHeader: {
     height: 28,
@@ -1526,7 +2176,7 @@ const styles = {
     color: "#9a3412",
   },
   dayCell: {
-    height: 118,
+    height: "100%",
     borderRadius: 18,
     padding: 10,
     boxSizing: "border-box",
@@ -1564,7 +2214,7 @@ const styles = {
     fontWeight: 900,
   },
   memberName: {
-    marginTop: 16,
+    marginTop: 10,
     textAlign: "center",
     fontWeight: 950,
     fontSize: 13,
@@ -1582,6 +2232,10 @@ const styles = {
     color: "#9a3412",
     background: "#ffedd5",
   },
+  mobileContainer: {
+    width: "100%",
+    overflowX: "hidden",
+  },
   modalOverlay: {
     position: "fixed",
     inset: 0,
@@ -1594,7 +2248,7 @@ const styles = {
     zIndex: 50,
   },
   modalCard: {
-    width: "100%",
+    width: "min(94vw, 430px)",
     maxWidth: 430,
     background: "#fffaf3",
     borderRadius: 26,
@@ -1602,8 +2256,8 @@ const styles = {
     boxShadow: "0 28px 80px rgba(28,18,12,0.34)",
   },
   rulesModalCard: {
-    width: "100%",
-    maxWidth: 800,
+    width: "min(96vw, 1100px)",
+    maxWidth: 1100,
     maxHeight: "88vh",
     overflowY: "auto",
     background: "#fffaf3",
@@ -1612,8 +2266,8 @@ const styles = {
     boxShadow: "0 28px 80px rgba(28,18,12,0.34)",
   },
   mapModalCard: {
-    width: "100%",
-    maxWidth: 940,
+    width: "min(96vw, 1200px)",
+    maxWidth: 1200,
     background: "#fffaf3",
     borderRadius: 26,
     padding: 22,
@@ -1895,7 +2549,7 @@ const styles = {
   },
   cleaningMapImage: {
     width: "100%",
-    maxHeight: "72vh",
+    maxHeight: "78vh",
     objectFit: "contain",
     border: "1px solid #d6d3d1",
     display: "block",

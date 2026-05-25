@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 const API_URL =
-  "https://script.google.com/macros/s/AKfycbx41QCs8kYM81auy4klVGdwyzTQhs2t8RRpm3s2eWCiymHI-r3JjPpZ2jkOAzln_lQ_/exec";
+  "https://script.google.com/macros/s/AKfycbzdRQAUFEGiiBVgMPHbtj61GPdxdnFLuxrj53Zydagj2NwBGMd-R3_EbDVhR18jJDkDVQ/exec";
 
 const CLEANING_MAP_URL = "/cleaning-map.jpg";
 const MACHINE_OVERVIEW_URL = "/machine-overview.png";
@@ -399,16 +399,12 @@ export default function App() {
   const baseMember =
     apiBaseMember || getBaseCoffeeMember(today, todayActiveMembers, holidays);
 
-  async function loadData(forceRefresh = false) {
+  async function loadData() {
     setLoading(true);
     setMessage("");
 
     try {
-      const url = forceRefresh
-  ? `${API_URL}?t=${Date.now()}`
-  : API_URL;
-
-const res = await fetch(url);
+      const res = await fetch(`${API_URL}?t=${Date.now()}`);
       const data = await res.json();
 
       setMembers(data.members || []);
@@ -629,11 +625,7 @@ const res = await fetch(url);
 
           <div style={styles.headerRight}>
             <div style={styles.versionBadge}>{appVersion}</div>
-            <button
-  type="button"
-  onClick={() => loadData(true)}
-  style={styles.refreshButton}
->
+            <button type="button" onClick={loadData} style={styles.refreshButton}>
               Refresh
             </button>
           </div>

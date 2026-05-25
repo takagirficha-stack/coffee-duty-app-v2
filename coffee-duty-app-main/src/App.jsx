@@ -64,6 +64,31 @@ function toDateKey(date) {
   return `${y}-${m}-${d}`;
 }
 
+function normalizeDateKey(value) {
+  if (!value) return "";
+
+  if (value instanceof Date) {
+    return toDateKey(value);
+  }
+
+  const str = String(value).trim();
+
+  if (/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(str)) return str;
+
+  if (/^[0-9]{4}\/[0-9]{1,2}\/[0-9]{1,2}/.test(str)) {
+    const parts = str.split(/[\/ ]/);
+    const y = parts[0];
+    const m = parts[1];
+    const d = parts[2];
+    return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  }
+
+  const parsed = new Date(str);
+  if (!Number.isNaN(parsed.getTime())) return toDateKey(parsed);
+
+  return str;
+}
+
 function getMonthKey(date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -432,18 +457,14 @@ export default function App() {
       setApiTodayMember(data.todayMember || "");
       setApiBaseMember(data.baseMember || "");
       setApiNextDuty(data.nextDuty || null);
-      setApiHasChange(!!data.hasChange);
-      setApiRecord(data.record || null);
-
-      const coffeeMap = {};
-      (data.records || []).forEach((r) => {
-        if (r.date) coffeeMap[r.date] = r;
+      setApiHasChange(!!data.has.records || []).forEach((r) => {
+        const key = normalizeDateKey(r.date);
+        if (key) coffeeMap[key] = { ...r, date: key };
       });
       setRecords(coffeeMap);
 
       const cleaningMap = {};
-      (data.cleaningRecords || []).forEach((r) => {
-        if (r.date) cleaningMap[r.date] = r;
+      (dataey) cleaningMap[key] = { ...r, date: key };
       });
       setCleaningRecords(cleaningMap);
     } catch {
@@ -736,14 +757,7 @@ export default function App() {
                     </div>
                     {done && completedBy && (
                       <div style={styles.completedByText}>
-                        Completed by {completedBy}
-                      </div>
-                    )
-                  </div>
-
-                  <div style={styles.cleaningDutyArea}>Area {duty.area}</div>
-
-                  <button
+                    on
                     type="button"
                     onClick={() => saveCleaningComplete(duty)}
                     disabled={!canComplete}

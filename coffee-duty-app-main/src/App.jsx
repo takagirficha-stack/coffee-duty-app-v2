@@ -457,14 +457,20 @@ export default function App() {
       setApiTodayMember(data.todayMember || "");
       setApiBaseMember(data.baseMember || "");
       setApiNextDuty(data.nextDuty || null);
-      setApiHasChange(!!data.has.records || []).forEach((r) => {
+      setApiHasChange(!!data.hasChange);
+      setApiRecord(data.record || null);
+
+      const coffeeMap = {};
+      (data.records || []).forEach((r) => {
         const key = normalizeDateKey(r.date);
         if (key) coffeeMap[key] = { ...r, date: key };
       });
       setRecords(coffeeMap);
 
       const cleaningMap = {};
-      (dataey) cleaningMap[key] = { ...r, date: key };
+      (data.cleaningRecords || []).forEach((r) => {
+        const key = normalizeDateKey(r.date);
+        if (key) cleaningMap[key] = { ...r, date: key };
       });
       setCleaningRecords(cleaningMap);
     } catch {
@@ -757,7 +763,14 @@ export default function App() {
                     </div>
                     {done && completedBy && (
                       <div style={styles.completedByText}>
-                    on
+                        Completed by {completedBy}
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={styles.cleaningDutyArea}>Area {duty.area}</div>
+
+                  <button
                     type="button"
                     onClick={() => saveCleaningComplete(duty)}
                     disabled={!canComplete}
@@ -1234,11 +1247,11 @@ const styles = {
   doneBadge: {
     padding: "8px 12px",
     borderRadius: 999,
-    background: "#f5e6d3",
+    background: "#ead7c5",
     color: "#7c2d12",
     fontSize: 12,
     fontWeight: 950,
-    border: "1px solid #d6bfa7",
+    border: "1px solid #b98a64",
   },
   pendingBadge: {
     padding: "8px 12px",
@@ -1350,7 +1363,7 @@ const styles = {
   },
   cleaningDutyRowDone: {
     background: "#f6eadf",
-    border: "1px solid #d9b99b",
+    border: "1px solid #dfc2a8",
   },
   cleaningDutyRowMobile: {
     gridTemplateColumns: "1fr",
@@ -1528,7 +1541,7 @@ const styles = {
   },
   dayDone: {
     background: "#f6eadf",
-    border: "1px solid #d9b99b",
+    border: "1px solid #dfc2a8",
   },
   dayToday: {
     background: "#fef3c7",

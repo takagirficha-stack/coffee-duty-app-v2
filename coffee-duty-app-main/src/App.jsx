@@ -1631,7 +1631,7 @@ const styles = {
   page: {
     minHeight: "100vh",
     width: "100vw",
-    padding: "clamp(14px, 1.4vw, 24px)"
+    padding: "clamp(14px, 1.4vw, 24px)",
     fontFamily:
       "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     background:

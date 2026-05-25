@@ -399,12 +399,16 @@ export default function App() {
   const baseMember =
     apiBaseMember || getBaseCoffeeMember(today, todayActiveMembers, holidays);
 
-  async function loadData() {
+  async function loadData(forceRefresh = false) {
     setLoading(true);
     setMessage("");
 
     try {
-      const response = await fetch(API_URL);
+      const url = forceRefresh
+  ? `${API_URL}?t=${Date.now()}`
+  : API_URL;
+
+const res = await fetch(url);
       const data = await res.json();
 
       setMembers(data.members || []);
@@ -625,7 +629,11 @@ export default function App() {
 
           <div style={styles.headerRight}>
             <div style={styles.versionBadge}>{appVersion}</div>
-            <button type="button" onClick={loadData} style={styles.refreshButton}>
+            <button
+  type="button"
+  onClick={() => loadData(true)}
+  style={styles.refreshButton}
+>
               Refresh
             </button>
           </div>

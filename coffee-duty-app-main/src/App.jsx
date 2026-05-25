@@ -881,27 +881,6 @@ export default function App() {
       <div style={styles.decorCircleTwo} />
 
       <div style={styles.appShell}>
-        <div style={styles.stickyHeader}>
-          <div style={styles.stickyInner}>
-            <div style={styles.stickyTodayLabel}>Today</div>
-            <div style={styles.stickyTodayMember}>{todayMember || "-"}</div>
-            <div style={styles.progressRingWrap}>
-              <div
-                style={{
-                  ...styles.progressRing,
-                  background: todayDone
-                    ? "conic-gradient(#7c2d12 360deg, #ead7c5 0deg)"
-                    : "conic-gradient(#f59e0b 180deg, #ead7c5 0deg)",
-                }}
-              >
-                <div style={styles.progressRingInner}>
-                  {todayDone ? "✓" : "◔"}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <header style={styles.header}>
           <div>
             <div style={styles.kicker}>Coffee Dolce Operations</div>
@@ -940,6 +919,12 @@ export default function App() {
           </div>
         </header>
 
+        <div
+          style={{
+            ...styles.dashboardLayout,
+            ...(isMobile ? styles.dashboardLayoutMobile : {}),
+          }}
+        >
         <main className="soft-card" style={styles.heroCard}>
           <div style={styles.heroTopRow}>
             <div>
@@ -970,36 +955,6 @@ export default function App() {
               )}
             </div>
           </div>
-
-          <div style={styles.dashboardGrid}>
-            <div className="info-hover-card" style={styles.dashboardCard}>
-              <div style={styles.infoLabel}>Monthly Completion</div>
-              <div style={styles.dashboardValue}>
-                {Object.keys(records).filter((d) => d.startsWith(`${year}-${String(month).padStart(2, "0")}`)).length}
-              </div>
-            </div>
-            <div className="info-hover-card" style={styles.dashboardCard}>
-              <div style={styles.infoLabel}>Changes</div>
-              <div style={styles.dashboardValue}>
-                {assignmentChanges.filter((a) => String(a.date || "").startsWith(`${year}-${String(month).padStart(2, "0")}`)).length}
-              </div>
-            </div>
-            <div className="info-hover-card" style={styles.dashboardCard}>
-              <div style={styles.infoLabel}>Status</div>
-              <div style={styles.dashboardValue}>{todayDone ? "Done" : "Waiting"}</div>
-            </div>
-          </div>
-
-          <div style={styles.heatmapRow}>
-            {days
-              .filter((d) => d.getMonth() + 1 === month)
-              .map((d) => {
-                const key = toDateKey(d);
-                const done = isCoffeeRecordDone(records[key]);
-                return <div key={key} title={key} style={done ? styles.heatmapDotDone : styles.heatmapDot} />;
-              })}
-          </div>
-
           <div style={styles.infoGrid}>
             <div className="info-hover-card" style={styles.infoCard}>
               <div style={styles.infoLabel}>Base Assignee</div>
@@ -1097,6 +1052,35 @@ export default function App() {
             })}
           </div>
         </section>
+
+        <div style={styles.rightColumn}>
+          <section style={styles.cleaningSection}>
+            <div style={styles.sectionHeader}>
+              <div>
+                <div style={styles.sectionKicker}>Quick Status</div>
+                <h2 style={styles.sectionTitle}>Today's Overview</h2>
+              </div>
+            </div>
+
+            <div style={styles.infoGrid}>
+              <div className="info-hover-card" style={styles.infoCard}>
+                <div style={styles.infoLabel}>Today Duty</div>
+                <div style={styles.infoValue}>{todayMember || "-"}</div>
+              </div>
+
+              <div className="info-hover-card" style={styles.infoCard}>
+                <div style={styles.infoLabel}>Status</div>
+                <div style={styles.infoValue}>{todayDone ? "Done" : "Waiting"}</div>
+              </div>
+
+              <div className="info-hover-card" style={styles.infoCard}>
+                <div style={styles.infoLabel}>Weather</div>
+                <div style={styles.infoValue}>{weather.icon} {weather.temp}°C</div>
+              </div>
+            </div>
+          </section>
+        </div>
+        </div>
 
         {isMobile && (
           <div style={styles.mobileTabs}>
@@ -1540,29 +1524,23 @@ const styles = {
     fontWeight: 950,
     color: "#24160f",
   },
-  progressRingWrap: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  progressRing: {
-    width: 48,
-    height: 48,
-    borderRadius: "50%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  progressRingInner: {
-    width: 36,
-    height: 36,
-    borderRadius: "50%",
-    background: "#fffaf3",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontWeight: 950,
+  stickyDonePill: {
+    padding: "7px 11px",
+    borderRadius: 999,
+    background: "#f6eadf",
+    border: "1px solid #dfc2a8",
     color: "#7c2d12",
+    fontSize: 12,
+    fontWeight: 950,
+  },
+  stickyWaitingPill: {
+    padding: "7px 11px",
+    borderRadius: 999,
+    background: "#fff7ed",
+    border: "1px solid #fed7aa",
+    color: "#9a3412",
+    fontSize: 12,
+    fontWeight: 950,
   },
   mobileTabs: {
     display: "grid",
@@ -1651,44 +1629,6 @@ const styles = {
       "radial-gradient(circle at top left, rgba(180,83,9,0.18) 0, transparent 34%), radial-gradient(circle at top right, rgba(30,41,59,0.42) 0, transparent 30%), linear-gradient(135deg, #1c120c 0%, #24160f 48%, #0f172a 100%)",
     color: "#fff7ed",
   },
-  dashboardGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-    gap: 10,
-    margin: "18px 0 8px",
-  },
-  dashboardCard: {
-    padding: 14,
-    borderRadius: 20,
-    background: "rgba(255,255,255,0.72)",
-    border: "1px solid rgba(148, 111, 82, 0.16)",
-  },
-  dashboardValue: {
-    marginTop: 5,
-    fontSize: 20,
-    fontWeight: 950,
-    color: "#7c2d12",
-  },
-  heatmapRow: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: 5,
-    margin: "10px 0 18px",
-  },
-  heatmapDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 4,
-    background: "#f3e8dc",
-    border: "1px solid #ead7c5",
-  },
-  heatmapDotDone: {
-    width: 12,
-    height: 12,
-    borderRadius: 4,
-    background: "#7c2d12",
-    border: "1px solid #7c2d12",
-  },
   decorCircleOne: {
     position: "fixed",
     width: 280,
@@ -1711,7 +1651,7 @@ const styles = {
   },
   appShell: {
     width: "100%",
-    maxWidth: 1480,
+    maxWidth: 1800,
     margin: "0 auto",
     position: "relative",
     zIndex: 1,
@@ -1733,7 +1673,7 @@ const styles = {
   },
   title: {
     margin: "4px 0 0",
-    fontSize: 42,
+    fontSize: "clamp(34px, 5vw, 52px)",
     fontWeight: 950,
     letterSpacing: "-0.05em",
     lineHeight: 1,
@@ -1790,6 +1730,20 @@ const styles = {
     fontWeight: 900,
     cursor: "pointer",
     boxShadow: "0 10px 24px rgba(120, 53, 15, 0.08)",
+  },
+  dashboardLayout: {
+    display: "grid",
+    gridTemplateColumns: "minmax(420px, 720px) minmax(320px, 1fr)",
+    gap: 20,
+    alignItems: "start",
+  },
+  dashboardLayoutMobile: {
+    gridTemplateColumns: "1fr",
+  },
+  rightColumn: {
+    display: "grid",
+    gap: 18,
+    alignContent: "start",
   },
   heroCard: {
     padding: "clamp(18px, 3vw, 34px)",
@@ -2162,8 +2116,8 @@ const styles = {
   },
   calendarGridMobile: {
     minWidth: 0,
-    gridTemplateColumns: "repeat(7, minmax(44px, 1fr))",
-    gridAutoRows: "84px",
+    gridTemplateColumns: "repeat(7, minmax(42px, 1fr))",
+    gridAutoRows: "72px",
   },
   weekHeader: {
     height: 28,

@@ -152,6 +152,24 @@ function getCoffeeMember(date, members, holidays, assignmentChanges) {
   return getBaseCoffeeMember(date, members, holidays);
 }
 
+function isCoffeeRecordDone(record) {
+  if (!record) return false;
+
+  // Old format: trash / water / clean are all true.
+  if (record.trash && record.water && record.clean) return true;
+
+  // New GAS format: record exists with date/member/completedAt.
+  if (record.date || record.member || record.completedAt) return true;
+
+  return false;
+}
+
+function isCleaningRecordDone(record) {
+  if (!record) return false;
+  if (record.date || record.member || record.completedBy || record.completedAt) return true;
+  return false;
+}
+
 function buildCalendar(year, month) {
   const firstDay = new Date(year, month - 1, 1);
   const start = new Date(firstDay);
@@ -381,11 +399,7 @@ export default function App() {
 
   const todayMember = apiTodayMember || localTodayMember;
 
-  const todayDone =
-    !!apiRecord ||
-    (records[todayKey]?.trash &&
-      records[todayKey]?.water &&
-      records[todayKey]?.clean);
+  const todayDone = !!apiRecord || isCoffeeRecordDone(records[todayKey]);
 
   const completedAt =
     apiRecord?.completedAt ||
@@ -701,7 +715,8 @@ export default function App() {
 
           <div style={styles.cleaningList}>
             {monthCleaningDuties.map((duty) => {
-              const done = !!cleaningRecords[duty.dateKey];
+              const done = isCleaningRecordDone(cleaningRecords[duty.dateKey]);
+              const completedBy = cleaningRecords[duty.dateKey]?.completedBy || "";
               const canComplete = duty.dateKey === todayKey && !done;
 
               return (
@@ -710,6 +725,7 @@ export default function App() {
                   className="cleaning-hover-row"
                   style={{
                     ...styles.cleaningDutyRow,
+                    ...(done ? styles.cleaningDutyRowDone : {}),
                     ...(isMobile ? styles.cleaningDutyRowMobile : {}),
                   }}
                 >
@@ -718,6 +734,11 @@ export default function App() {
                     <div style={styles.cleaningDutyMember}>
                       {duty.member || "Unassigned"}
                     </div>
+                    {done && completedBy && (
+                      <div style={styles.completedByText}>
+                        Completed by {completedBy}
+                      </div>
+                    )
                   </div>
 
                   <div style={styles.cleaningDutyArea}>Area {duty.area}</div>
@@ -828,10 +849,7 @@ export default function App() {
                   assignmentChanges
                 );
 
-                const done =
-                  records[key]?.trash &&
-                  records[key]?.water &&
-                  records[key]?.clean;
+                const done = isCoffeeRecordDone(records[key]);
                 const isToday = key === todayKey;
                 const changed = !!getChangedMember(date, assignmentChanges);
                 const canChange = inMonth && member && !isPastDate(date);
@@ -1202,11 +1220,11 @@ const styles = {
   doneBadge: {
     padding: "8px 12px",
     borderRadius: 999,
-    background: "#dcfce7",
-    color: "#166534",
+    background: "#f5e6d3",
+    color: "#7c2d12",
     fontSize: 12,
     fontWeight: 950,
-    border: "1px solid #bbf7d0",
+    border: "1px solid #d6bfa7",
   },
   pendingBadge: {
     padding: "8px 12px",
@@ -1316,6 +1334,10 @@ const styles = {
     background: "#fffaf3",
     border: "1px solid rgba(146,64,14,0.12)",
   },
+  cleaningDutyRowDone: {
+    background: "#f6eadf",
+    border: "1px solid #d9b99b",
+  },
   cleaningDutyRowMobile: {
     gridTemplateColumns: "1fr",
     textAlign: "left",
@@ -1330,6 +1352,12 @@ const styles = {
     fontSize: 16,
     fontWeight: 950,
     color: "#24160f",
+  },
+  completedByText: {
+    marginTop: 4,
+    fontSize: 11,
+    fontWeight: 850,
+    color: "#7c2d12",
   },
   cleaningDutyArea: {
     fontSize: 13,
@@ -1485,8 +1513,8 @@ const styles = {
     color: "#a8a29e",
   },
   dayDone: {
-    background: "#dcfce7",
-    border: "1px solid #86efac",
+    background: "#f6eadf",
+    border: "1px solid #d9b99b",
   },
   dayToday: {
     background: "#fef3c7",
@@ -1787,8 +1815,8 @@ const styles = {
     display: "inline-block",
     padding: "5px 10px",
     borderRadius: 999,
-    background: "#dcfce7",
-    color: "#166534",
+    background: "#f5e6d3",
+    color: "#7c2d12",
     fontSize: 11,
     fontWeight: 950,
     marginBottom: 8,

@@ -404,7 +404,7 @@ export default function App() {
     setMessage("");
 
     try {
-      const res = await fetch(`${API_URL}?t=${Date.now()}`);
+      const response = await fetch(API_URL);
       const data = await res.json();
 
       setMembers(data.members || []);

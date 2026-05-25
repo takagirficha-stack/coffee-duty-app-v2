@@ -293,6 +293,22 @@ function MonthButton({ children, onClick }) {
 function AppMotionStyles() {
   return (
     <style>{`
+      html, body, #root {
+        width: 100%;
+        min-height: 100%;
+        margin: 0;
+      }
+
+      #root {
+        max-width: none !important;
+        padding: 0 !important;
+        text-align: left !important;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
       @keyframes softPulseToday {
         0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.28), 0 8px 18px rgba(92,54,24,0.05); }
         70% { box-shadow: 0 0 0 9px rgba(245, 158, 11, 0), 0 14px 28px rgba(92,54,24,0.10); }
@@ -1614,7 +1630,8 @@ const styles = {
   },
   page: {
     minHeight: "100vh",
-    padding: "20px clamp(12px, 2vw, 28px) 42px",
+    width: "100vw",
+    padding: "clamp(14px, 1.4vw, 24px)"
     fontFamily:
       "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     background:
@@ -1651,8 +1668,8 @@ const styles = {
   },
   appShell: {
     width: "100%",
-    maxWidth: 1800,
-    margin: "0 auto",
+    maxWidth: "none",
+    margin: "0",
     position: "relative",
     zIndex: 1,
   },
@@ -1733,9 +1750,10 @@ const styles = {
   },
   dashboardLayout: {
     display: "grid",
-    gridTemplateColumns: "minmax(420px, 720px) minmax(320px, 1fr)",
+    gridTemplateColumns: "minmax(360px, 1.15fr) minmax(300px, 0.85fr) minmax(300px, 0.85fr)",
     gap: 20,
     alignItems: "start",
+    width: "100%",
   },
   dashboardLayoutMobile: {
     gridTemplateColumns: "1fr",
@@ -1744,9 +1762,10 @@ const styles = {
     display: "grid",
     gap: 18,
     alignContent: "start",
+    marginTop: 18,
   },
   heroCard: {
-    padding: "clamp(18px, 3vw, 34px)",
+    padding: "clamp(18px, 2vw, 30px)",
     borderRadius: 34,
     background: "rgba(255,255,255,0.82)",
     backdropFilter: "blur(16px)",
@@ -1923,7 +1942,7 @@ const styles = {
     animation: "checkPop 0.55s ease both",
   },
   cleaningSection: {
-    marginTop: 18,
+    marginTop: 0,
     padding: "clamp(16px, 2vw, 24px)",
     borderRadius: 28,
     background: "rgba(255,255,255,0.72)",
@@ -2110,7 +2129,7 @@ const styles = {
   calendarGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
-    gridAutoRows: "118px",
+    gridAutoRows: "clamp(92px, 8.5vw, 140px)",
     gap: 6,
     paddingBottom: 18,
   },

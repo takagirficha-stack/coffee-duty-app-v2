@@ -668,7 +668,8 @@ export default function App() {
     },
   ];
 
-  const surveyCategories = ["All", "Coffee", "Latte", "Iced", "Espresso", "Tea", "Sweet"];
+  const surveyCategories = ["All", "Coffee", "Latte", "Iced", "Espresso", "Tea", "Sweet", "Other"];
+  const adminCategoryOptions = ["Coffee", "Latte", "Iced", "Espresso", "Tea", "Sweet", "Other"];
 
   const visibleSurveyItems = useMemo(() => {
     const source = products.length ? products : surveyItems;
@@ -1349,42 +1350,111 @@ export default function App() {
 
                 <div style={styles.adminHintBox}>
                   <div style={styles.adminHintTitle}>Product controls</div>
-                  <div style={styles.adminHintText}>Display controls whether the item appears in the survey. NEW controls the badge shown on product cards.</div>
+                  <div style={styles.adminHintText}>Display controls whether the item appears in the survey. NEW controls the badge shown on product cards. Category and taste values control filtering and product card details.</div>
                 </div>
 
                 <div style={styles.adminProductList}>
                   {adminDraftProducts.map((item, index) => (
                     <div key={item.id || item.name} style={styles.adminProductRow}>
-                      <label style={styles.adminCheckLabel}>
-                        <input
-                          type="checkbox"
-                          checked={item.isVisible !== false}
-                          onChange={(e) => {
-                            const next = [...adminDraftProducts];
-                            next[index] = { ...next[index], isVisible: e.target.checked };
-                            setAdminDraftProducts(next);
-                          }}
-                        />
-                        <span>Display</span>
-                      </label>
+                      <div style={styles.adminProductMainRow}>
+                        <label style={styles.adminCheckLabel}>
+                          <input
+                            type="checkbox"
+                            checked={item.isVisible !== false}
+                            onChange={(e) => {
+                              const next = [...adminDraftProducts];
+                              next[index] = { ...next[index], isVisible: e.target.checked };
+                              setAdminDraftProducts(next);
+                            }}
+                          />
+                          <span>Display</span>
+                        </label>
 
-                      <label style={styles.adminCheckLabel}>
-                        <input
-                          type="checkbox"
-                          checked={!!item.isNew}
-                          onChange={(e) => {
-                            const next = [...adminDraftProducts];
-                            next[index] = { ...next[index], isNew: e.target.checked };
-                            setAdminDraftProducts(next);
-                          }}
-                        />
-                        <span>NEW</span>
-                      </label>
+                        <label style={styles.adminCheckLabel}>
+                          <input
+                            type="checkbox"
+                            checked={!!item.isNew}
+                            onChange={(e) => {
+                              const next = [...adminDraftProducts];
+                              next[index] = { ...next[index], isNew: e.target.checked };
+                              setAdminDraftProducts(next);
+                            }}
+                          />
+                          <span>NEW</span>
+                        </label>
 
-                      <img src={item.image} alt={item.name} style={styles.adminProductImage} />
-                      <div>
-                        <div style={styles.adminProductName}>{item.name}</div>
-                        <div style={styles.adminProductSub}>{item.category || "Uncategorized"}</div>
+                        <img src={item.image} alt={item.name} style={styles.adminProductImage} />
+                        <div>
+                          <div style={styles.adminProductName}>{item.name}</div>
+                          <div style={styles.adminProductSub}>{item.category || "Uncategorized"}</div>
+                        </div>
+                      </div>
+
+                      <div style={styles.adminEditGrid}>
+                        <label style={styles.adminFieldLabel}>
+                          Category
+                          <select
+                            value={item.category || "Coffee"}
+                            onChange={(e) => {
+                              const next = [...adminDraftProducts];
+                              next[index] = { ...next[index], category: e.target.value };
+                              setAdminDraftProducts(next);
+                            }}
+                            style={styles.adminSelect}
+                          >
+                            {adminCategoryOptions.map((category) => (
+                              <option key={category} value={category}>{category}</option>
+                            ))}
+                          </select>
+                        </label>
+
+                        <label style={styles.adminFieldLabel}>
+                          Strong
+                          <input
+                            type="number"
+                            min="0"
+                            max="5"
+                            value={item.strong ?? 0}
+                            onChange={(e) => {
+                              const next = [...adminDraftProducts];
+                              next[index] = { ...next[index], strong: Number(e.target.value || 0) };
+                              setAdminDraftProducts(next);
+                            }}
+                            style={styles.adminNumberInput}
+                          />
+                        </label>
+
+                        <label style={styles.adminFieldLabel}>
+                          Milk
+                          <input
+                            type="number"
+                            min="0"
+                            max="5"
+                            value={item.milk ?? 0}
+                            onChange={(e) => {
+                              const next = [...adminDraftProducts];
+                              next[index] = { ...next[index], milk: Number(e.target.value || 0) };
+                              setAdminDraftProducts(next);
+                            }}
+                            style={styles.adminNumberInput}
+                          />
+                        </label>
+
+                        <label style={styles.adminFieldLabel}>
+                          Sweet
+                          <input
+                            type="number"
+                            min="0"
+                            max="5"
+                            value={item.sweet ?? 0}
+                            onChange={(e) => {
+                              const next = [...adminDraftProducts];
+                              next[index] = { ...next[index], sweet: Number(e.target.value || 0) };
+                              setAdminDraftProducts(next);
+                            }}
+                            style={styles.adminNumberInput}
+                          />
+                        </label>
                       </div>
                     </div>
                   ))}
@@ -2581,13 +2651,17 @@ const styles = {
   },
   adminProductRow: {
     display: "grid",
-    gridTemplateColumns: "92px 72px 56px 1fr",
-    gap: 10,
-    alignItems: "center",
-    padding: 10,
+    gap: 12,
+    padding: 12,
     borderRadius: 16,
     background: "#ffffff",
     border: "1px solid rgba(146,64,14,0.12)",
+  },
+  adminProductMainRow: {
+    display: "grid",
+    gridTemplateColumns: "92px 72px 56px 1fr",
+    gap: 10,
+    alignItems: "center",
   },
   adminCheckLabel: {
     display: "flex",
@@ -2596,6 +2670,43 @@ const styles = {
     fontSize: 12,
     fontWeight: 900,
     color: "#5c3b2a",
+  },
+  adminEditGrid: {
+    display: "grid",
+    gridTemplateColumns: "minmax(130px, 1fr) repeat(3, 82px)",
+    gap: 10,
+    alignItems: "end",
+  },
+  adminFieldLabel: {
+    display: "grid",
+    gap: 5,
+    fontSize: 11,
+    fontWeight: 950,
+    color: "#7c5a46",
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
+  },
+  adminSelect: {
+    width: "100%",
+    height: 36,
+    borderRadius: 10,
+    border: "1px solid #e7d4c2",
+    background: "#fffaf3",
+    padding: "0 10px",
+    fontSize: 12,
+    fontWeight: 850,
+    color: "#3f2a1f",
+  },
+  adminNumberInput: {
+    width: "100%",
+    height: 36,
+    borderRadius: 10,
+    border: "1px solid #e7d4c2",
+    background: "#fffaf3",
+    padding: "0 8px",
+    fontSize: 12,
+    fontWeight: 850,
+    color: "#3f2a1f",
   },
   adminProductImage: {
     width: 56,

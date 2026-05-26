@@ -866,10 +866,16 @@ export default function App() {
   }, []);
 
   async function postData(data) {
-    await fetch(API_URL, {
+    const res = await fetch(API_URL, {
       method: "POST",
       body: JSON.stringify(data),
     });
+
+    const result = await res.json().catch(() => ({ ok: false, error: "Invalid API response" }));
+    if (!result.ok) {
+      throw new Error(result.error || result.message || "API request failed");
+    }
+    return result;
   }
 
   const saveCoffeeComplete = async () => {
@@ -978,10 +984,12 @@ export default function App() {
     try {
       await postData({ action: "updateProducts", products: adminDraftProducts });
       setProducts(adminDraftProducts);
+      localStorage.removeItem(CACHE_KEY);
+      await loadData(true);
       setMessage("Product display settings have been saved.");
       setTimeout(() => setMessage(""), 2500);
-    } catch {
-      setMessage("Failed to save product settings.");
+    } catch (error) {
+      setMessage(`Failed to save product settings: ${error.message}`);
     }
   };
 

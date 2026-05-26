@@ -418,6 +418,7 @@ export default function App() {
   const [showManual, setShowManual] = useState(false);
   const [showSurvey, setShowSurvey] = useState(false);
   const [selectedSurveyItems, setSelectedSurveyItems] = useState([]);
+  const [votedName, setVotedName] = useState("");
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [surveyCategory, setSurveyCategory] = useState("All");
   const [products, setProducts] = useState([]);
@@ -671,7 +672,7 @@ export default function App() {
   const surveyCategories = ["All", "Coffee", "Latte", "Iced", "Espresso", "Tea", "Sweet", "Other"];
   const adminCategoryOptions = ["Coffee", "Latte", "Iced", "Espresso", "Tea", "Sweet", "Other"];
 
-  const visibleSurveyItems = useMemo(() => {
+  const enrichedSurveyItems = useMemo(() => {
     const source = products.length
       ? products.map((product) => {
           const fallback = surveyItems.find((item) => item.id === product.id) || {};
@@ -687,10 +688,23 @@ export default function App() {
         })
       : surveyItems;
 
-    return source
-      .filter((item) => item.isVisible !== false)
-      .filter((item) => surveyCategory === "All" || item.category === surveyCategory);
-  }, [products, surveyCategory]);
+    return source.filter((item) => item.isVisible !== false);
+  }, [products]);
+
+  const visibleSurveyItems = useMemo(() => {
+    return enrichedSurveyItems.filter((item) => surveyCategory === "All" || item.category === surveyCategory);
+  }, [enrichedSurveyItems, surveyCategory]);
+
+  const recommendedProduct = useMemo(() => {
+    return (
+      enrichedSurveyItems.find((item) => item.badge === "Staff Pick") ||
+      enrichedSurveyItems.find((item) => item.isNew) ||
+      enrichedSurveyItems[0] ||
+      null
+    );
+  }, [enrichedSurveyItems]);
+
+  const alreadyVotedForThisMonth = !!votedName;
 
   const todayActiveMembers = useMemo(
     () => getActiveNamesForDate(today, memberVersions, members),
@@ -799,6 +813,7 @@ export default function App() {
   useEffect(() => {
     loadCachedData();
     loadData(false);
+    setVotedName(localStorage.getItem(`survey_voted_${surveyMonth}`) || "");
   }, []);
 
   useEffect(() => {
@@ -974,6 +989,7 @@ export default function App() {
         items: selectedSurveyItems,
       });
       localStorage.setItem(`survey_voted_${surveyMonth}`, voterName.trim());
+      setVotedName(voterName.trim());
       setSelectedSurveyItems([]);
       setShowSurvey(false);
       setMessage("Survey request has been saved.");
@@ -1321,6 +1337,9 @@ export default function App() {
               <div style={styles.surveyLead}>
                 Current request period: {surveyPeriodLabel}. This vote applies to {surveyMonthLabel}.
               </div>
+              {alreadyVotedForThisMonth && (
+                <div style={styles.votedNotice}>✓ {votedName} already submitted a request for {surveyMonthLabel}.</div>
+              )}
             </div>
             <div style={styles.surveyButtonGroup}>
               <button type="button" onClick={() => setShowAdmin(true)} style={styles.adminButton}>
@@ -1498,6 +1517,24 @@ export default function App() {
               <button type="button" onClick={() => setShowSurvey(false)} style={styles.cancelButton}>Close</button>
             </div>
 
+            {recommendedProduct && (
+              <div style={styles.recommendedBox}>
+                <div style={styles.recommendedTextBlock}>
+                  <div style={styles.recommendedKicker}>Recommended this month</div>
+                  <div style={styles.recommendedTitle}>{recommendedProduct.name}</div>
+                  <div style={styles.recommendedSub}>{recommendedProduct.description}</div>
+                </div>
+                <img src={recommendedProduct.image} alt={recommendedProduct.name} style={styles.recommendedImage} />
+                <button
+                  type="button"
+                  style={styles.recommendedButton}
+                  onClick={() => setSelectedProduct(recommendedProduct)}
+                >
+                  View details
+                </button>
+              </div>
+            )}
+
             <div style={styles.categoryPills}>
               {surveyCategories.map((category) => (
                 <button
@@ -1514,6 +1551,7 @@ export default function App() {
             <div style={styles.surveyCardGrid}>
               {visibleSurveyItems.map((item) => {
                 const selected = selectedSurveyItems.includes(item.id);
+                const themeStyle = styles[`surveyTheme${item.category}`] || styles.surveyThemeOther;
                 return (
                   <button
                     key={item.id}
@@ -1524,7 +1562,7 @@ export default function App() {
                         prev.includes(item.id) ? prev.filter((v) => v !== item.id) : [...prev, item.id]
                       )
                     }
-                    style={selected ? styles.surveyProductSelected : styles.surveyProduct}
+                    style={{ ...(selected ? styles.surveyProductSelected : styles.surveyProduct), ...themeStyle }}
                   >
                     <div style={styles.productBadgeStack}>
                       {item.isNew && <span style={styles.newBadge}>NEW</span>}
@@ -2331,6 +2369,17 @@ const styles = {
     fontWeight: 700,
     color: "#7c5a46",
   },
+  votedNotice: {
+    marginTop: 8,
+    width: "fit-content",
+    padding: "8px 12px",
+    borderRadius: 999,
+    background: "#f6eadf",
+    border: "1px solid #dfc2a8",
+    color: "#7c2d12",
+    fontSize: 12,
+    fontWeight: 950,
+  },
   deliveryMonthBadge: {
     padding: "11px 16px",
     borderRadius: 999,
@@ -2359,6 +2408,61 @@ const styles = {
     borderRadius: 26,
     padding: 24,
     boxShadow: "0 28px 80px rgba(28,18,12,0.34)",
+  },
+  recommendedBox: {
+    display: "grid",
+    gridTemplateColumns: "1fr 150px auto",
+    gap: 14,
+    alignItems: "center",
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 24,
+    background: "linear-gradient(135deg, #fff7ed, #eff6ff)",
+    border: "1px solid rgba(146,64,14,0.12)",
+    boxShadow: "0 14px 34px rgba(92,54,24,0.10)",
+  },
+  recommendedTextBlock: {
+    minWidth: 0,
+  },
+  recommendedKicker: {
+    fontSize: 11,
+    fontWeight: 950,
+    color: "#9a3412",
+    letterSpacing: "0.1em",
+    textTransform: "uppercase",
+  },
+  recommendedTitle: {
+    marginTop: 4,
+    fontSize: 20,
+    fontWeight: 950,
+    color: "#24160f",
+    letterSpacing: "-0.03em",
+  },
+  recommendedSub: {
+    marginTop: 5,
+    fontSize: 12,
+    fontWeight: 700,
+    color: "#7c5a46",
+    lineHeight: 1.45,
+    maxWidth: 520,
+  },
+  recommendedImage: {
+    width: 140,
+    height: 92,
+    objectFit: "contain",
+    borderRadius: 18,
+    background: "rgba(255,255,255,0.68)",
+  },
+  recommendedButton: {
+    padding: "10px 14px",
+    borderRadius: 999,
+    border: "1px solid #dfc2a8",
+    background: "#ffffff",
+    color: "#7c2d12",
+    fontSize: 12,
+    fontWeight: 950,
+    cursor: "pointer",
+    whiteSpace: "nowrap",
   },
   categoryPills: {
     display: "flex",
@@ -2427,6 +2531,27 @@ const styles = {
     justifyItems: "center",
     textAlign: "center",
     boxShadow: "0 18px 44px rgba(124,45,18,0.2)",
+  },
+  surveyThemeCoffee: {
+    background: "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,247,237,0.92))",
+  },
+  surveyThemeLatte: {
+    background: "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(254,243,199,0.50))",
+  },
+  surveyThemeIced: {
+    background: "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(219,234,254,0.58))",
+  },
+  surveyThemeEspresso: {
+    background: "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(231,229,228,0.58))",
+  },
+  surveyThemeTea: {
+    background: "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(252,231,243,0.58))",
+  },
+  surveyThemeSweet: {
+    background: "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(254,226,226,0.58))",
+  },
+  surveyThemeOther: {
+    background: "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(241,245,249,0.68))",
   },
   surveyProductImage: {
     width: "100%",

@@ -383,6 +383,11 @@ export default function App() {
   const [showManual, setShowManual] = useState(false);
   const [showSurvey, setShowSurvey] = useState(false);
   const [selectedSurveyItems, setSelectedSurveyItems] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [adminUnlocked, setAdminUnlocked] = useState(false);
+  const [adminPin, setAdminPin] = useState("");
+  const [adminDraftProducts, setAdminDraftProducts] = useState([]);
   const [selectedMachinePart, setSelectedMachinePart] = useState("tank");
 
   const [message, setMessage] = useState("");
@@ -401,15 +406,56 @@ export default function App() {
   const [changeReason, setChangeReason] = useState("");
 
   const selectedPart = MACHINE_PARTS[selectedMachinePart];
+  const surveyMonth = (() => {
+    const d = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+    return getMonthKey(d);
+  })();
+  const surveyDeadline = new Date(today.getFullYear(), today.getMonth(), 15);
+  const surveyClosed = today > surveyDeadline;
 
   const surveyItems = [
-    "Regular Blend",
-    "Cafe au Lait",
-    "Latte Macchiato",
-    "Cappuccino",
-    "Espresso",
-    "Chocolate",
+    {
+      id: "regular-blend",
+      name: "Regular Blend",
+      image:
+        "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='360' height='240' viewBox='0 0 360 240'><rect width='360' height='240' rx='28' fill='%23fff7ed'/><circle cx='180' cy='106' r='52' fill='%23f6eadf'/><path d='M132 122h96l-12 54h-72z' fill='%237c2d12'/><path d='M142 84h76l10 38h-96z' fill='%23b45309'/><text x='180' y='210' font-size='24' text-anchor='middle' fill='%237c2d12' font-family='Arial' font-weight='700'>Regular</text></svg>",
+    },
+    {
+      id: "cafe-au-lait",
+      name: "Cafe au Lait",
+      image:
+        "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='360' height='240' viewBox='0 0 360 240'><rect width='360' height='240' rx='28' fill='%23fffaf3'/><circle cx='180' cy='106' r='52' fill='%23ead7c5'/><path d='M132 122h96l-12 54h-72z' fill='%23a16207'/><path d='M142 84h76l10 38h-96z' fill='%23f59e0b'/><text x='180' y='210' font-size='24' text-anchor='middle' fill='%237c2d12' font-family='Arial' font-weight='700'>Cafe au Lait</text></svg>",
+    },
+    {
+      id: "latte-macchiato",
+      name: "Latte Macchiato",
+      image:
+        "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='360' height='240' viewBox='0 0 360 240'><rect width='360' height='240' rx='28' fill='%23f8fafc'/><circle cx='180' cy='106' r='52' fill='%23fef3c7'/><path d='M132 122h96l-12 54h-72z' fill='%239a3412'/><path d='M142 84h76l10 38h-96z' fill='%23fed7aa'/><text x='180' y='210' font-size='22' text-anchor='middle' fill='%237c2d12' font-family='Arial' font-weight='700'>Latte</text></svg>",
+    },
+    {
+      id: "cappuccino",
+      name: "Cappuccino",
+      image:
+        "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='360' height='240' viewBox='0 0 360 240'><rect width='360' height='240' rx='28' fill='%23eff6ff'/><circle cx='180' cy='106' r='52' fill='%23dbeafe'/><path d='M132 122h96l-12 54h-72z' fill='%237c2d12'/><path d='M142 84h76l10 38h-96z' fill='%2393c5fd'/><text x='180' y='210' font-size='23' text-anchor='middle' fill='%237c2d12' font-family='Arial' font-weight='700'>Cappuccino</text></svg>",
+    },
+    {
+      id: "espresso",
+      name: "Espresso",
+      image:
+        "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='360' height='240' viewBox='0 0 360 240'><rect width='360' height='240' rx='28' fill='%2324160f'/><circle cx='180' cy='106' r='52' fill='%23412a1d'/><path d='M132 122h96l-12 54h-72z' fill='%23f6eadf'/><path d='M142 84h76l10 38h-96z' fill='%237c2d12'/><text x='180' y='210' font-size='24' text-anchor='middle' fill='%23f6eadf' font-family='Arial' font-weight='700'>Espresso</text></svg>",
+    },
+    {
+      id: "chocolate",
+      name: "Chocolate",
+      image:
+        "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='360' height='240' viewBox='0 0 360 240'><rect width='360' height='240' rx='28' fill='%23fef2f2'/><circle cx='180' cy='106' r='52' fill='%23fecaca'/><path d='M132 122h96l-12 54h-72z' fill='%237f1d1d'/><path d='M142 84h76l10 38h-96z' fill='%23b91c1c'/><text x='180' y='210' font-size='24' text-anchor='middle' fill='%237c2d12' font-family='Arial' font-weight='700'>Chocolate</text></svg>",
+    },
   ];
+
+  const visibleSurveyItems = useMemo(() => {
+    const source = products.length ? products : surveyItems;
+    return source.filter((item) => item.isVisible !== false);
+  }, [products]);
 
   const todayActiveMembers = useMemo(
     () => getActiveNamesForDate(today, memberVersions, members),
@@ -452,6 +498,8 @@ export default function App() {
     setHolidays(data.holidays || []);
     setAssignmentChanges(data.assignmentChanges || []);
     setCleaningMembers(data.cleaningMembers || []);
+    setProducts(data.products || []);
+    setAdminDraftProducts(data.products || []);
     setAppVersion(data.appVersion || "v2.0.0");
 
     setApiTodayMember(data.todayMember || "");
@@ -664,6 +712,73 @@ export default function App() {
     await installPrompt.userChoice;
     setInstallPrompt(null);
     setCanInstall(false);
+  };
+
+  const submitSurvey = async () => {
+    if (surveyClosed) {
+      setMessage("The survey is closed for this month.");
+      return;
+    }
+
+    if (!selectedSurveyItems.length) {
+      setMessage("Please select at least one item.");
+      return;
+    }
+
+    const voterName = window.prompt("Enter your name to submit your request.");
+    if (!voterName) return;
+
+    setMessage("Saving survey request...");
+
+    try {
+      await postData({
+        action: "submitSurvey",
+        month: surveyMonth,
+        name: voterName.trim(),
+        items: selectedSurveyItems,
+      });
+      localStorage.setItem(`survey_voted_${surveyMonth}`, voterName.trim());
+      setSelectedSurveyItems([]);
+      setShowSurvey(false);
+      setMessage("Survey request has been saved.");
+      setTimeout(() => setMessage(""), 2500);
+    } catch {
+      setMessage("Failed to save the survey request.");
+    }
+  };
+
+  const unlockAdmin = () => {
+    if (adminPin === "admin") {
+      setAdminUnlocked(true);
+      setAdminPin("");
+      setAdminDraftProducts(products.length ? products : surveyItems.map((item) => ({ ...item, isVisible: true })));
+    } else {
+      setMessage("Invalid admin PIN.");
+    }
+  };
+
+  const saveAdminProducts = async () => {
+    setMessage("Saving product display settings...");
+    try {
+      await postData({ action: "updateProducts", products: adminDraftProducts });
+      setProducts(adminDraftProducts);
+      setMessage("Product display settings have been saved.");
+      setTimeout(() => setMessage(""), 2500);
+    } catch {
+      setMessage("Failed to save product settings.");
+    }
+  };
+
+  const refreshNestleProducts = async () => {
+    setMessage("Requesting product refresh...");
+    try {
+      await postData({ action: "refreshNestleProducts" });
+      await loadData(true);
+      setMessage("Product refresh request has been sent.");
+      setTimeout(() => setMessage(""), 2500);
+    } catch {
+      setMessage("Failed to refresh products.");
+    }
   };
 
   const saveCleaningComplete = async (duty) => {
@@ -890,7 +1005,6 @@ export default function App() {
             {[
               ["today", "Today"],
               ["calendar", "Calendar"],
-              ["rules", "Rules"],
             ].map(([key, label]) => (
               <button
                 key={key}
@@ -984,40 +1098,166 @@ export default function App() {
             <div>
               <div style={styles.sectionKicker}>Next Month Request</div>
               <h2 style={styles.sectionTitle}>Capsule Purchase Survey</h2>
-              <div style={styles.surveyLead}>Vote for the items you would like to have next month.</div>
+              <div style={styles.surveyLead}>
+                Vote by the 15th. Delivery is planned for the 1st of next month.
+              </div>
             </div>
-            <button type="button" onClick={() => setShowSurvey((v) => !v)} style={styles.surveyToggleButton}>
-              {showSurvey ? "Close Survey" : "Open Survey"}
-            </button>
+            <div style={styles.surveyButtonGroup}>
+              <button type="button" onClick={() => setShowAdmin(true)} style={styles.adminButton}>
+                Admin
+              </button>
+              <button type="button" onClick={() => setShowSurvey((v) => !v)} style={styles.surveyToggleButton}>
+                {showSurvey ? "Close Survey" : "Open Survey"}
+              </button>
+            </div>
           </div>
 
-          {showSurvey && (
+          </section>
+      </div>
+
+      {showAdmin && (
+        <div style={styles.modalOverlay} onClick={() => setShowAdmin(false)}>
+          <div style={styles.surveyModalCard} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.modalHeader}>
+              <div>
+                <h2 style={styles.modalTitle}>Admin Mode</h2>
+                <div style={styles.modalSubText}>Adjust which products appear in the survey.</div>
+              </div>
+              <button type="button" onClick={() => setShowAdmin(false)} style={styles.cancelButton}>Close</button>
+            </div>
+
+            {!adminUnlocked ? (
+              <div style={styles.adminLoginBox}>
+                <label style={styles.formLabel}>Admin PIN</label>
+                <input
+                  value={adminPin}
+                  onChange={(e) => setAdminPin(e.target.value)}
+                  style={styles.input}
+                  placeholder="Enter admin PIN"
+                  type="password"
+                />
+                <button type="button" onClick={unlockAdmin} style={styles.saveButton}>Unlock</button>
+              </div>
+            ) : (
+              <>
+                <div style={styles.adminActions}>
+                  <button type="button" onClick={refreshNestleProducts} style={styles.adminButtonLarge}>
+                    Refresh from Nestle
+                  </button>
+                  <button type="button" onClick={saveAdminProducts} style={styles.saveButton}>
+                    Save Display Settings
+                  </button>
+                </div>
+
+                <div style={styles.adminProductList}>
+                  {adminDraftProducts.map((item, index) => (
+                    <label key={item.id || item.name} style={styles.adminProductRow}>
+                      <input
+                        type="checkbox"
+                        checked={item.isVisible !== false}
+                        onChange={(e) => {
+                          const next = [...adminDraftProducts];
+                          next[index] = { ...next[index], isVisible: e.target.checked };
+                          setAdminDraftProducts(next);
+                        }}
+                      />
+                      <img src={item.image} alt={item.name} style={styles.adminProductImage} />
+                      <span style={styles.adminProductName}>{item.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showSurvey && (
+        <div style={styles.modalOverlay} onClick={() => setShowSurvey(false)}>
+          <div style={styles.surveyModalCard} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.modalHeader}>
+              <div>
+                <h2 style={styles.modalTitle}>Capsule Purchase Survey</h2>
+                <div style={styles.modalSubText}>Select the items you would like to have next month.</div>
+              </div>
+              <button type="button" onClick={() => setShowSurvey(false)} style={styles.cancelButton}>Close</button>
+            </div>
+
             <div style={styles.surveyCardGrid}>
-              {surveyItems.map((item) => {
-                const selected = selectedSurveyItems.includes(item);
+              {visibleSurveyItems.map((item) => {
+                const selected = selectedSurveyItems.includes(item.id);
                 return (
                   <button
-                    key={item}
+                    key={item.id}
                     type="button"
                     onClick={() =>
                       setSelectedSurveyItems((prev) =>
-                        prev.includes(item) ? prev.filter((v) => v !== item) : [...prev, item]
+                        prev.includes(item.id) ? prev.filter((v) => v !== item.id) : [...prev, item.id]
                       )
                     }
-                    style={selected ? styles.surveyItemSelected : styles.surveyItem}
+                    style={selected ? styles.surveyProductSelected : styles.surveyProduct}
                   >
-                    <span style={styles.surveyItemIcon}>☕</span>
-                    <span>{item}</span>
+                    <img src={item.image} alt={item.name} style={styles.surveyProductImage} />
+                    <span style={styles.surveyProductName}>{item.name}</span>
+                    <span style={selected ? styles.surveySelectedBadge : styles.surveyBadge}>
+                      {selected ? "Selected" : "Select"}
+                    </span>
                   </button>
                 );
               })}
-              <button type="button" style={styles.surveySubmitButton}>
-                Submit Request
-              </button>
             </div>
-          )}
-        </section>
-      </div>
+
+            <button type="button" onClick={submitSurvey} style={styles.surveySubmitButton} disabled={surveyClosed}>
+              {surveyClosed ? "Survey Closed" : "Submit Request"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showManual && (
+        <div style={styles.modalOverlay} onClick={() => setShowManual(false)}>
+          <div style={styles.rulesModalCard} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.modalHeader}>
+              <div>
+                <h2 style={styles.modalTitle}>Usage Manual</h2>
+                <div style={styles.modalSubText}>How to use this Coffee Duty app.</div>
+              </div>
+              <button type="button" onClick={() => setShowManual(false)} style={styles.cancelButton}>Close</button>
+            </div>
+
+            <div style={styles.manualGrid}>
+              <div style={styles.manualCard}>
+                <div style={styles.manualStep}>1</div>
+                <div>
+                  <div style={styles.manualTitle}>Check today's duty</div>
+                  <div style={styles.manualText}>Open the app and confirm the person shown in Today's Coffee Cleaning Duty.</div>
+                </div>
+              </div>
+              <div style={styles.manualCard}>
+                <div style={styles.manualStep}>2</div>
+                <div>
+                  <div style={styles.manualTitle}>Complete after work</div>
+                  <div style={styles.manualText}>After the coffee cleaning work is finished, press Complete Coffee Cleaning.</div>
+                </div>
+              </div>
+              <div style={styles.manualCard}>
+                <div style={styles.manualStep}>3</div>
+                <div>
+                  <div style={styles.manualTitle}>Change assignee if needed</div>
+                  <div style={styles.manualText}>Click a future calendar date on PC, or long-press on mobile, then enter your name and reason.</div>
+                </div>
+              </div>
+              <div style={styles.manualCard}>
+                <div style={styles.manualStep}>4</div>
+                <div>
+                  <div style={styles.manualTitle}>Check floor cleaning</div>
+                  <div style={styles.manualText}>For monthly area cleaning, confirm the area and press Complete when the work is done.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showCheck && (
         <div style={styles.checkOverlay}>
@@ -1649,6 +1889,22 @@ const styles = {
     gap: 14,
     flexWrap: "wrap",
   },
+  surveyButtonGroup: {
+    display: "flex",
+    gap: 8,
+    alignItems: "center",
+    flexWrap: "wrap",
+  },
+  adminButton: {
+    padding: "11px 16px",
+    borderRadius: 999,
+    border: "1px solid #cbd5e1",
+    background: "#ffffff",
+    color: "#334155",
+    fontSize: 12,
+    fontWeight: 950,
+    cursor: "pointer",
+  },
   surveyLead: {
     marginTop: 5,
     fontSize: 13,
@@ -1665,44 +1921,80 @@ const styles = {
     fontWeight: 950,
     cursor: "pointer",
   },
+  surveyModalCard: {
+    width: "min(94vw, 920px)",
+    maxHeight: "88vh",
+    overflowY: "auto",
+    background: "#fffaf3",
+    borderRadius: 26,
+    padding: 24,
+    boxShadow: "0 28px 80px rgba(28,18,12,0.34)",
+  },
   surveyCardGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-    gap: 10,
+    gap: 12,
     marginTop: 16,
+    marginBottom: 16,
   },
-  surveyItem: {
-    minHeight: 58,
-    padding: "12px 14px",
-    borderRadius: 18,
+  surveyProduct: {
+    minHeight: 220,
+    padding: 12,
+    borderRadius: 22,
     border: "1px solid rgba(146,64,14,0.12)",
-    background: "#fffaf3",
+    background: "#ffffff",
     color: "#3f2a1f",
     fontSize: 13,
     fontWeight: 900,
     cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
+    display: "grid",
     gap: 8,
-    justifyContent: "center",
+    justifyItems: "center",
+    textAlign: "center",
+    boxShadow: "0 10px 24px rgba(92,54,24,0.08)",
   },
-  surveyItemSelected: {
-    minHeight: 58,
-    padding: "12px 14px",
-    borderRadius: 18,
-    border: "1px solid #7c2d12",
+  surveyProductSelected: {
+    minHeight: 220,
+    padding: 12,
+    borderRadius: 22,
+    border: "2px solid #7c2d12",
     background: "#f6eadf",
     color: "#7c2d12",
     fontSize: 13,
     fontWeight: 950,
     cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
+    display: "grid",
     gap: 8,
-    justifyContent: "center",
+    justifyItems: "center",
+    textAlign: "center",
+    boxShadow: "0 14px 30px rgba(124,45,18,0.18)",
   },
-  surveyItemIcon: {
-    fontSize: 16,
+  surveyProductImage: {
+    width: "100%",
+    maxWidth: 170,
+    borderRadius: 18,
+    objectFit: "cover",
+    background: "#fff7ed",
+  },
+  surveyProductName: {
+    fontSize: 14,
+    fontWeight: 950,
+  },
+  surveyBadge: {
+    padding: "6px 10px",
+    borderRadius: 999,
+    background: "#fff7ed",
+    color: "#9a3412",
+    fontSize: 11,
+    fontWeight: 950,
+  },
+  surveySelectedBadge: {
+    padding: "6px 10px",
+    borderRadius: 999,
+    background: "#7c2d12",
+    color: "#ffffff",
+    fontSize: 11,
+    fontWeight: 950,
   },
   surveySubmitButton: {
     minHeight: 58,
@@ -1714,6 +2006,51 @@ const styles = {
     fontSize: 13,
     fontWeight: 950,
     cursor: "pointer",
+  },
+  adminLoginBox: {
+    display: "grid",
+    gap: 12,
+  },
+  adminActions: {
+    display: "flex",
+    gap: 10,
+    flexWrap: "wrap",
+    marginBottom: 14,
+  },
+  adminButtonLarge: {
+    padding: "11px 18px",
+    borderRadius: 999,
+    border: "1px solid #dfc2a8",
+    background: "#f6eadf",
+    color: "#7c2d12",
+    fontSize: 12,
+    fontWeight: 950,
+    cursor: "pointer",
+  },
+  adminProductList: {
+    display: "grid",
+    gap: 10,
+  },
+  adminProductRow: {
+    display: "grid",
+    gridTemplateColumns: "28px 56px 1fr",
+    gap: 10,
+    alignItems: "center",
+    padding: 10,
+    borderRadius: 16,
+    background: "#ffffff",
+    border: "1px solid rgba(146,64,14,0.12)",
+  },
+  adminProductImage: {
+    width: 56,
+    height: 40,
+    objectFit: "cover",
+    borderRadius: 10,
+  },
+  adminProductName: {
+    fontSize: 13,
+    fontWeight: 900,
+    color: "#3f2a1f",
   },
   manualGrid: {
     display: "grid",

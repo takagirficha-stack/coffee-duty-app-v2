@@ -443,12 +443,17 @@ export default function App() {
   const [changeReason, setChangeReason] = useState("");
 
   const selectedPart = MACHINE_PARTS[selectedMachinePart];
-  const surveyMonth = (() => {
-    const d = new Date(today.getFullYear(), today.getMonth() + 1, 1);
-    return getMonthKey(d);
+  const surveyTargetDate = (() => {
+    const offset = today.getDate() >= 16 ? 2 : 1;
+    return new Date(today.getFullYear(), today.getMonth() + offset, 1);
   })();
-  const surveyDeadline = new Date(today.getFullYear(), today.getMonth(), 15);
-  const surveyClosed = today > surveyDeadline;
+  const surveyMonth = getMonthKey(surveyTargetDate);
+  const surveyMonthLabel = `${surveyTargetDate.getFullYear()}年${surveyTargetDate.getMonth() + 1}月配送分`;
+  const surveyPeriodLabel = (() => {
+    const start = new Date(surveyTargetDate.getFullYear(), surveyTargetDate.getMonth() - 2, 16);
+    const end = new Date(surveyTargetDate.getFullYear(), surveyTargetDate.getMonth() - 1, 15);
+    return `${start.getMonth() + 1}/${start.getDate()}〜${end.getMonth() + 1}/${end.getDate()}`;
+  })();
 
   const surveyItems = [
     {
@@ -930,11 +935,6 @@ export default function App() {
   };
 
   const submitSurvey = async () => {
-    if (surveyClosed) {
-      setMessage("The survey is closed for this month.");
-      return;
-    }
-
     if (!selectedSurveyItems.length) {
       setMessage("Please select at least one item.");
       return;
@@ -1296,13 +1296,14 @@ export default function App() {
               <div style={styles.sectionKicker}>Next Month Request</div>
               <h2 style={styles.sectionTitle}>Capsule Purchase Survey</h2>
               <div style={styles.surveyLead}>
-                Vote by the 15th. Delivery is planned for the 1st of next month.
+                Current request period: {surveyPeriodLabel}. This vote applies to {surveyMonthLabel}.
               </div>
             </div>
             <div style={styles.surveyButtonGroup}>
               <button type="button" onClick={() => setShowAdmin(true)} style={styles.adminButton}>
                 Admin
               </button>
+              <div style={styles.deliveryMonthBadge}>{surveyMonthLabel}</div>
               <button type="button" onClick={() => setShowSurvey((v) => !v)} style={styles.surveyToggleButton}>
                 {showSurvey ? "Close Survey" : "Open Survey"}
               </button>
@@ -1400,7 +1401,7 @@ export default function App() {
             <div style={styles.modalHeader}>
               <div>
                 <h2 style={styles.modalTitle}>Capsule Purchase Survey</h2>
-                <div style={styles.modalSubText}>Select the items you would like to have next month.</div>
+                <div style={styles.modalSubText}>Select items for {surveyMonthLabel}. Request period: {surveyPeriodLabel}.</div>
               </div>
               <button type="button" onClick={() => setShowSurvey(false)} style={styles.cancelButton}>Close</button>
             </div>
@@ -1470,8 +1471,8 @@ export default function App() {
               })}
             </div>
 
-            <button type="button" onClick={submitSurvey} style={styles.surveySubmitButton} disabled={surveyClosed}>
-              {surveyClosed ? "Survey Closed" : "Submit Request"}
+            <button type="button" onClick={submitSurvey} style={styles.surveySubmitButton}>
+              Submit Request for {surveyMonthLabel}
             </button>
           </div>
         </div>
@@ -2219,6 +2220,16 @@ const styles = {
     fontSize: 13,
     fontWeight: 700,
     color: "#7c5a46",
+  },
+  deliveryMonthBadge: {
+    padding: "11px 16px",
+    borderRadius: 999,
+    border: "1px solid #fed7aa",
+    background: "#fff7ed",
+    color: "#9a3412",
+    fontSize: 12,
+    fontWeight: 950,
+    whiteSpace: "nowrap",
   },
   surveyToggleButton: {
     padding: "11px 18px",

@@ -1067,34 +1067,48 @@ export default function App() {
               </div>
 
               <div style={{ ...styles.ruleSection, ...styles.ruleMachine }}>
-                <div style={styles.ruleTitle}>Coffee Machine Cleaning Guide</div>
+                <div style={styles.ruleTitle}>Usage Manual</div>
+
                 <div style={styles.manualGrid}>
-              <div style={styles.manualCard}>
-                <div style={styles.manualStep}>1</div>
-                <div>
-                  <div style={styles.manualTitle}>Check today's duty</div>
-                  <div style={styles.manualText}>Open the app and confirm the person shown in Today's Coffee Cleaning Duty.</div>
-                </div>
-              </div>
-              <div style={styles.manualCard}>
-                <div style={styles.manualStep}>2</div>
-                <div>
-                  <div style={styles.manualTitle}>Clean after finishing</div>
-                  <div style={styles.manualText}>After the coffee cleaning work is finished, press Complete Coffee Cleaning.</div>
-                </div>
-              </div>
-              <div style={styles.manualCard}>
-                <div style={styles.manualStep}>3</div>
-                <div>
-                  <div style={styles.manualTitle}>Change assignee if needed</div>
-                  <div style={styles.manualText}>Click a future calendar date on PC, or long-press on mobile, then enter the changer name and reason.</div>
-                </div>
-              </div>
-              <div style={styles.manualCard}>
-                <div style={styles.manualStep}>4</div>
-                <div>
-                  <div style={styles.manualTitle}>Check floor cleaning</div>
-                  <div style={styles.manualText}>For monthly area cleaning, confirm the area and press Complete when the work is done.</div>
+                  <div style={styles.manualCard}>
+                    <div style={styles.manualStep}>1</div>
+                    <div>
+                      <div style={styles.manualTitle}>Check today's duty</div>
+                      <div style={styles.manualText}>
+                        Open the app and confirm the person shown in Today's Coffee Cleaning Duty.
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={styles.manualCard}>
+                    <div style={styles.manualStep}>2</div>
+                    <div>
+                      <div style={styles.manualTitle}>Clean after finishing</div>
+                      <div style={styles.manualText}>
+                        After the coffee cleaning work is finished, press Complete Coffee Cleaning.
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={styles.manualCard}>
+                    <div style={styles.manualStep}>3</div>
+                    <div>
+                      <div style={styles.manualTitle}>Change assignee if needed</div>
+                      <div style={styles.manualText}>
+                        Click a future calendar date on PC, or long-press on mobile, then enter the changer name and reason.
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={styles.manualCard}>
+                    <div style={styles.manualStep}>4</div>
+                    <div>
+                      <div style={styles.manualTitle}>Check floor cleaning</div>
+                      <div style={styles.manualText}>
+                        For monthly area cleaning, confirm the area and press Complete when the work is done.
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

@@ -418,6 +418,8 @@ export default function App() {
   const [showManual, setShowManual] = useState(false);
   const [showSurvey, setShowSurvey] = useState(false);
   const [selectedSurveyItems, setSelectedSurveyItems] = useState([]);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [surveyCategory, setSurveyCategory] = useState("All");
   const [products, setProducts] = useState([]);
   const [showAdmin, setShowAdmin] = useState(false);
   const [adminUnlocked, setAdminUnlocked] = useState(false);
@@ -452,75 +454,223 @@ export default function App() {
     {
       id: "regular-blend",
       name: "Regular Blend",
-      image: "/products/regular-blend.jpg",
-      fallbackImage:
-        "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='360' height='240' viewBox='0 0 360 240'><rect width='360' height='240' rx='28' fill='%23fff7ed'/><circle cx='180' cy='106' r='52' fill='%23f6eadf'/><path d='M132 122h96l-12 54h-72z' fill='%237c2d12'/><path d='M142 84h76l10 38h-96z' fill='%23b45309'/><text x='180' y='210' font-size='24' text-anchor='middle' fill='%237c2d12' font-family='Arial' font-weight='700'>Regular</text></svg>",
+      image: "/products/Regular Blend.png",
+      category: "Coffee",
       strong: 3,
       milk: 0,
       sweet: 1,
       badge: "Classic",
+      isNew: false,
+      price: "-",
+      description:
+        "A balanced daily coffee with a clean aroma and smooth taste. Great for everyday office coffee breaks.",
+      size: "Standard capsule box",
+    },
+    {
+      id: "original-blend",
+      name: "Original Blend",
+      image: "/products/Original Blend.png",
+      category: "Coffee",
+      strong: 3,
+      milk: 0,
+      sweet: 1,
+      badge: "Standard",
+      isNew: false,
+      price: "-",
+      description:
+        "A familiar standard blend with a mild bitterness and easy-drinking finish.",
+      size: "Standard capsule box",
+    },
+    {
+      id: "rich-blend",
+      name: "Rich Blend",
+      image: "/products/Rich Blend.png",
+      category: "Coffee",
+      strong: 4,
+      milk: 0,
+      sweet: 1,
+      badge: "Rich",
+      isNew: true,
+      price: "-",
+      description:
+        "A deeper roast style with a stronger body. Good for people who prefer a more coffee-forward cup.",
+      size: "Standard capsule box",
+    },
+    {
+      id: "mocha-blend",
+      name: "Mocha Blend",
+      image: "/products/Mocha Blend.png",
+      category: "Coffee",
+      strong: 2,
+      milk: 1,
+      sweet: 3,
+      badge: "Mocha",
+      isNew: false,
+      price: "-",
+      description:
+        "A soft, fruity coffee profile with gentle sweetness and a relaxed finish.",
+      size: "Standard capsule box",
+    },
+    {
+      id: "morning-blend",
+      name: "Morning Blend",
+      image: "/products/Morning Blend.png",
+      category: "Coffee",
+      strong: 3,
+      milk: 0,
+      sweet: 1,
+      badge: "Daily",
+      isNew: false,
+      price: "-",
+      description:
+        "A light morning-friendly blend that is easy to drink and works well as a first cup.",
+      size: "Standard capsule box",
+    },
+    {
+      id: "new-york-morning-blend",
+      name: "New York Morning Blend",
+      image: "/products/New York Morning Blend.png",
+      category: "Coffee",
+      strong: 4,
+      milk: 0,
+      sweet: 1,
+      badge: "NY Style",
+      isNew: true,
+      price: "-",
+      description:
+        "A bold morning blend with a crisp aroma and fuller roast impression.",
+      size: "Large capsule box",
+    },
+    {
+      id: "miami-morning-blend",
+      name: "Miami Morning Blend",
+      image: "/products/Miami Morning Blend.png",
+      category: "Coffee",
+      strong: 3,
+      milk: 0,
+      sweet: 2,
+      badge: "Morning",
+      isNew: true,
+      price: "-",
+      description:
+        "A bright morning-style coffee with a refreshing finish and casual cafe feel.",
+      size: "Standard capsule box",
+    },
+    {
+      id: "iced-coffee-blend",
+      name: "Iced Coffee Blend",
+      image: "/products/Iced Coffee Blend.png",
+      category: "Iced",
+      strong: 3,
+      milk: 0,
+      sweet: 1,
+      badge: "Iced",
+      isNew: false,
+      price: "-",
+      description:
+        "Designed for iced coffee. Refreshing and easy to drink over ice.",
+      size: "Standard capsule box",
+    },
+    {
+      id: "iced-coffee-roast",
+      name: "Iced Coffee Roast",
+      image: "/products/Iced Coffee Roast.png",
+      category: "Iced",
+      strong: 4,
+      milk: 0,
+      sweet: 0,
+      badge: "Roast",
+      isNew: false,
+      price: "-",
+      description:
+        "A stronger iced roast option with a clean bitter finish. Good for hot days.",
+      size: "Standard capsule box",
     },
     {
       id: "cafe-au-lait",
       name: "Cafe au Lait",
-      image: "/products/cafe-au-lait.jpg",
-      fallbackImage:
-        "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='360' height='240' viewBox='0 0 360 240'><rect width='360' height='240' rx='28' fill='%23fffaf3'/><circle cx='180' cy='106' r='52' fill='%23ead7c5'/><path d='M132 122h96l-12 54h-72z' fill='%23a16207'/><path d='M142 84h76l10 38h-96z' fill='%23f59e0b'/><text x='180' y='210' font-size='24' text-anchor='middle' fill='%237c2d12' font-family='Arial' font-weight='700'>Cafe au Lait</text></svg>",
+      image: "/products/Café au Lait.png",
+      category: "Latte",
       strong: 2,
       milk: 4,
       sweet: 2,
       badge: "Popular",
+      isNew: false,
+      price: "-",
+      description:
+        "A smooth milk coffee with a gentle aroma. Easy to enjoy for many people.",
+      size: "Standard capsule box",
     },
     {
-      id: "latte-macchiato",
-      name: "Latte Macchiato",
-      image: "/products/latte-macchiato.jpg",
-      fallbackImage:
-        "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='360' height='240' viewBox='0 0 360 240'><rect width='360' height='240' rx='28' fill='%23f8fafc'/><circle cx='180' cy='106' r='52' fill='%23fef3c7'/><path d='M132 122h96l-12 54h-72z' fill='%239a3412'/><path d='M142 84h76l10 38h-96z' fill='%23fed7aa'/><text x='180' y='210' font-size='22' text-anchor='middle' fill='%237c2d12' font-family='Arial' font-weight='700'>Latte</text></svg>",
-      strong: 2,
-      milk: 5,
-      sweet: 3,
-      badge: "Staff Pick",
-    },
-    {
-      id: "cappuccino",
-      name: "Cappuccino",
-      image: "/products/cappuccino.jpg",
-      fallbackImage:
-        "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='360' height='240' viewBox='0 0 360 240'><rect width='360' height='240' rx='28' fill='%23eff6ff'/><circle cx='180' cy='106' r='52' fill='%23dbeafe'/><path d='M132 122h96l-12 54h-72z' fill='%237c2d12'/><path d='M142 84h76l10 38h-96z' fill='%2393c5fd'/><text x='180' y='210' font-size='23' text-anchor='middle' fill='%237c2d12' font-family='Arial' font-weight='700'>Cappuccino</text></svg>",
+      id: "flat-white",
+      name: "Flat White",
+      image: "/products/Flat White.png",
+      category: "Latte",
       strong: 3,
-      milk: 4,
+      milk: 5,
       sweet: 2,
-      badge: "Foamy",
+      badge: "Creamy",
+      isNew: true,
+      price: "-",
+      description:
+        "Creamy milk texture with a coffee base. A cafe-style option for milk lovers.",
+      size: "Standard capsule box",
     },
     {
-      id: "espresso",
-      name: "Espresso",
-      image: "/products/espresso.jpg",
-      fallbackImage:
-        "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='360' height='240' viewBox='0 0 360 240'><rect width='360' height='240' rx='28' fill='%2324160f'/><circle cx='180' cy='106' r='52' fill='%23412a1d'/><path d='M132 122h96l-12 54h-72z' fill='%23f6eadf'/><path d='M142 84h76l10 38h-96z' fill='%237c2d12'/><text x='180' y='210' font-size='24' text-anchor='middle' fill='%23f6eadf' font-family='Arial' font-weight='700'>Espresso</text></svg>",
+      id: "milk-tea",
+      name: "Milk Tea",
+      image: "/products/Milk Tea.png",
+      category: "Tea",
+      strong: 1,
+      milk: 5,
+      sweet: 4,
+      badge: "Tea",
+      isNew: false,
+      price: "-",
+      description:
+        "A sweet and creamy milk tea option for people who want something other than coffee.",
+      size: "Standard capsule box",
+    },
+    {
+      id: "espresso-intenso",
+      name: "Espresso Intenso",
+      image: "/products/Espresso Intenso.png",
+      category: "Espresso",
       strong: 5,
       milk: 0,
       sweet: 0,
       badge: "Strong",
+      isNew: false,
+      price: "-",
+      description:
+        "A strong espresso-style capsule with deep bitterness and a compact finish.",
+      size: "Standard capsule box",
     },
     {
-      id: "chocolate",
-      name: "Chocolate",
-      image: "/products/chocolate.jpg",
-      fallbackImage:
-        "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='360' height='240' viewBox='0 0 360 240'><rect width='360' height='240' rx='28' fill='%23fef2f2'/><circle cx='180' cy='106' r='52' fill='%23fecaca'/><path d='M132 122h96l-12 54h-72z' fill='%237f1d1d'/><path d='M142 84h76l10 38h-96z' fill='%23b91c1c'/><text x='180' y='210' font-size='24' text-anchor='middle' fill='%237c2d12' font-family='Arial' font-weight='700'>Chocolate</text></svg>",
+      id: "kitkat",
+      name: "KitKat",
+      image: "/products/KitKat.png",
+      category: "Sweet",
       strong: 1,
       milk: 3,
       sweet: 5,
       badge: "Sweet",
+      isNew: true,
+      price: "-",
+      description:
+        "A dessert-like sweet option with a playful flavor profile. Good for a casual break.",
+      size: "Standard capsule box",
     },
   ];
 
+  const surveyCategories = ["All", "Coffee", "Latte", "Iced", "Espresso", "Tea", "Sweet"];
+
   const visibleSurveyItems = useMemo(() => {
     const source = products.length ? products : surveyItems;
-    return source.filter((item) => item.isVisible !== false);
-  }, [products]);
+    return source
+      .filter((item) => item.isVisible !== false)
+      .filter((item) => surveyCategory === "All" || item.category === surveyCategory);
+  }, [products, surveyCategory]);
 
   const todayActiveMembers = useMemo(
     () => getActiveNamesForDate(today, memberVersions, members),
@@ -1230,6 +1380,19 @@ export default function App() {
               <button type="button" onClick={() => setShowSurvey(false)} style={styles.cancelButton}>Close</button>
             </div>
 
+            <div style={styles.categoryPills}>
+              {surveyCategories.map((category) => (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() => setSurveyCategory(category)}
+                  style={surveyCategory === category ? styles.categoryPillActive : styles.categoryPill}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
+
             <div style={styles.surveyCardGrid}>
               {visibleSurveyItems.map((item) => {
                 const selected = selectedSurveyItems.includes(item.id);
@@ -1245,7 +1408,10 @@ export default function App() {
                     }
                     style={selected ? styles.surveyProductSelected : styles.surveyProduct}
                   >
-                    {item.badge && <span style={styles.productBadge}>{item.badge}</span>}
+                    <div style={styles.productBadgeStack}>
+                      {item.isNew && <span style={styles.newBadge}>NEW</span>}
+                      {item.badge && <span style={styles.productBadge}>{item.badge}</span>}
+                    </div>
                     <img
                       src={item.image}
                       alt={item.name}
@@ -1257,6 +1423,15 @@ export default function App() {
                       }}
                     />
                     <span style={styles.surveyProductName}>{item.name}</span>
+                    <span
+                      style={styles.productDetailLink}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedProduct(item);
+                      }}
+                    >
+                      View details
+                    </span>
                     <div style={styles.productMeta}>
                       <div>Strong {"★".repeat(Number(item.strong || 0)) || "-"}</div>
                       <div>Milk {"★".repeat(Number(item.milk || 0)) || "-"}</div>
@@ -1273,6 +1448,52 @@ export default function App() {
             <button type="button" onClick={submitSurvey} style={styles.surveySubmitButton} disabled={surveyClosed}>
               {surveyClosed ? "Survey Closed" : "Submit Request"}
             </button>
+          </div>
+        </div>
+      )}
+
+      {selectedProduct && (
+        <div style={styles.modalOverlay} onClick={() => setSelectedProduct(null)}>
+          <div style={styles.productDetailModal} onClick={(e) => e.stopPropagation()}>
+            <button type="button" onClick={() => setSelectedProduct(null)} style={styles.productCloseButton}>×</button>
+            <div style={styles.productDetailHero}>
+              <img src={selectedProduct.image} alt={selectedProduct.name} style={styles.productDetailImage} />
+            </div>
+            <div style={styles.productDetailBody}>
+              <div style={styles.productDetailBadgeRow}>
+                {selectedProduct.isNew && <span style={styles.newBadge}>NEW</span>}
+                {selectedProduct.badge && <span style={styles.productBadgeStatic}>{selectedProduct.badge}</span>}
+                {selectedProduct.category && <span style={styles.categoryBadge}>{selectedProduct.category}</span>}
+              </div>
+              <h2 style={styles.productDetailTitle}>{selectedProduct.name}</h2>
+              <div style={styles.productStockText}>Status: Available for next month request.</div>
+              <div style={styles.productPrice}>{selectedProduct.price || "-"}</div>
+
+              <div style={styles.productDetailDivider} />
+              <div style={styles.productDescriptionTitle}>Product description:</div>
+              <div style={styles.productDescriptionText}>{selectedProduct.description || "No description available."}</div>
+
+              <div style={styles.productDetailMetaGrid}>
+                <div>Strong {"★".repeat(Number(selectedProduct.strong || 0)) || "-"}</div>
+                <div>Milk {"★".repeat(Number(selectedProduct.milk || 0)) || "-"}</div>
+                <div>Sweet {"★".repeat(Number(selectedProduct.sweet || 0)) || "-"}</div>
+              </div>
+
+              <div style={styles.productDetailDivider} />
+              <div style={styles.productSizeText}>Size: {selectedProduct.size || "Standard capsule box"}</div>
+              <button
+                type="button"
+                style={styles.productSelectButton}
+                onClick={() => {
+                  setSelectedSurveyItems((prev) =>
+                    prev.includes(selectedProduct.id) ? prev : [...prev, selectedProduct.id]
+                  );
+                  setSelectedProduct(null);
+                }}
+              >
+                Add to request
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1993,6 +2214,33 @@ const styles = {
     padding: 24,
     boxShadow: "0 28px 80px rgba(28,18,12,0.34)",
   },
+  categoryPills: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+    marginTop: 14,
+  },
+  categoryPill: {
+    padding: "8px 12px",
+    borderRadius: 999,
+    border: "1px solid #ead7c5",
+    background: "#ffffff",
+    color: "#7c5a46",
+    fontSize: 12,
+    fontWeight: 900,
+    cursor: "pointer",
+  },
+  categoryPillActive: {
+    padding: "8px 12px",
+    borderRadius: 999,
+    border: "1px solid #7c2d12",
+    background: "#7c2d12",
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: 950,
+    cursor: "pointer",
+    boxShadow: "0 10px 22px rgba(124,45,18,0.18)",
+  },
   surveyCardGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
@@ -2061,11 +2309,17 @@ const styles = {
     color: "#7c5a46",
     textAlign: "left",
   },
-  productBadge: {
+  productBadgeStack: {
     position: "absolute",
     top: 12,
     right: 12,
     zIndex: 2,
+    display: "flex",
+    gap: 6,
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
+  },
+  productBadge: {
     padding: "6px 10px",
     borderRadius: 999,
     background: "linear-gradient(135deg, #7c2d12, #b45309)",
@@ -2074,6 +2328,23 @@ const styles = {
     fontWeight: 950,
     letterSpacing: "0.08em",
     boxShadow: "0 8px 18px rgba(124,45,18,0.22)",
+  },
+  newBadge: {
+    padding: "6px 10px",
+    borderRadius: 999,
+    background: "linear-gradient(135deg, #f97316, #facc15)",
+    color: "#431407",
+    fontSize: 10,
+    fontWeight: 950,
+    letterSpacing: "0.08em",
+    boxShadow: "0 8px 18px rgba(249,115,22,0.22)",
+  },
+  productDetailLink: {
+    fontSize: 11,
+    fontWeight: 950,
+    color: "#1d4ed8",
+    textDecoration: "underline",
+    cursor: "pointer",
   },
   surveyBadge: {
     padding: "6px 10px",
@@ -2090,6 +2361,133 @@ const styles = {
     color: "#ffffff",
     fontSize: 11,
     fontWeight: 950,
+  },
+  productDetailModal: {
+    width: "min(94vw, 420px)",
+    maxHeight: "92vh",
+    overflowY: "auto",
+    background: "#fffaf3",
+    borderRadius: 26,
+    boxShadow: "0 28px 80px rgba(28,18,12,0.34)",
+    position: "relative",
+  },
+  productCloseButton: {
+    position: "absolute",
+    top: 10,
+    right: 12,
+    zIndex: 3,
+    width: 38,
+    height: 38,
+    borderRadius: "50%",
+    border: "none",
+    background: "rgba(255,255,255,0.82)",
+    color: "#3f2a1f",
+    fontSize: 28,
+    lineHeight: 1,
+    cursor: "pointer",
+  },
+  productDetailHero: {
+    padding: "34px 24px 16px",
+    background: "linear-gradient(180deg, #ffffff, #fff7ed)",
+    display: "flex",
+    justifyContent: "center",
+  },
+  productDetailImage: {
+    width: "100%",
+    maxWidth: 290,
+    maxHeight: 250,
+    objectFit: "contain",
+    filter: "drop-shadow(0 18px 24px rgba(92,54,24,0.18))",
+  },
+  productDetailBody: {
+    padding: "18px 22px 22px",
+  },
+  productDetailBadgeRow: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+    marginBottom: 10,
+  },
+  productBadgeStatic: {
+    padding: "6px 10px",
+    borderRadius: 999,
+    background: "#f6eadf",
+    color: "#7c2d12",
+    fontSize: 10,
+    fontWeight: 950,
+  },
+  categoryBadge: {
+    padding: "6px 10px",
+    borderRadius: 999,
+    background: "#eff6ff",
+    color: "#1d4ed8",
+    fontSize: 10,
+    fontWeight: 950,
+  },
+  productDetailTitle: {
+    margin: "0 0 6px",
+    fontSize: 22,
+    fontWeight: 950,
+    letterSpacing: "-0.04em",
+  },
+  productStockText: {
+    fontSize: 12,
+    fontWeight: 800,
+    color: "#166534",
+    marginBottom: 8,
+  },
+  productPrice: {
+    fontSize: 22,
+    fontWeight: 950,
+    color: "#1c120c",
+  },
+  productDetailDivider: {
+    height: 1,
+    background: "#dfd4ca",
+    margin: "18px 0",
+  },
+  productDescriptionTitle: {
+    fontSize: 13,
+    fontWeight: 950,
+    marginBottom: 8,
+    color: "#3f2a1f",
+  },
+  productDescriptionText: {
+    whiteSpace: "pre-wrap",
+    fontSize: 14,
+    lineHeight: 1.65,
+    fontWeight: 650,
+    color: "#3f2a1f",
+  },
+  productDetailMetaGrid: {
+    display: "grid",
+    gap: 6,
+    marginTop: 14,
+    padding: 12,
+    borderRadius: 16,
+    background: "#fff7ed",
+    border: "1px solid #fed7aa",
+    fontSize: 12,
+    fontWeight: 900,
+    color: "#7c5a46",
+  },
+  productSizeText: {
+    fontSize: 12,
+    fontWeight: 800,
+    color: "#7c5a46",
+    marginBottom: 14,
+  },
+  productSelectButton: {
+    width: "100%",
+    minHeight: 48,
+    borderRadius: 999,
+    border: "1px solid #b45309",
+    background: "linear-gradient(135deg, #facc15, #fdba74)",
+    color: "#431407",
+    fontSize: 14,
+    fontWeight: 950,
+    cursor: "pointer",
+    boxShadow: "0 12px 24px rgba(180,83,9,0.18)",
   },
   surveySubmitButton: {
     minHeight: 58,

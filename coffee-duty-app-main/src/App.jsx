@@ -8,20 +8,11 @@ const MACHINE_OVERVIEW_URL = "/machine-overview.png";
 const PART_TANK_URL = "/part-tank.png";
 const PART_HOLDER_URL = "/part-holder.png";
 const PART_TRAY_URL = "/part-tray.png";
-const CACHE_KEY = "coffeeDutyAppCacheV4";
+
+const CACHE_KEY = "coffeeDutyAppCacheV5";
 const SLACK_WEBHOOK_URL = "";
 const WEATHER_URL =
   "https://api.open-meteo.com/v1/forecast?latitude=35.7295&longitude=139.7190&current=temperature_2m,weather_code&timezone=Asia%2FTokyo";
-
-function getWeatherIcon(code) {
-  if ([0, 1].includes(code)) return "☀";
-  if ([2, 3].includes(code)) return "⛅";
-  if ([45, 48].includes(code)) return "🌫";
-  if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) return "🌧";
-  if ([71, 73, 75, 77, 85, 86].includes(code)) return "❄";
-  if ([95, 96, 99].includes(code)) return "⛈";
-  return "☕";
-}
 
 const MONTH_NAMES = [
   "January",
@@ -71,6 +62,16 @@ const MACHINE_PARTS = {
   },
 };
 
+function getWeatherIcon(code) {
+  if ([0, 1].includes(code)) return "☀";
+  if ([2, 3].includes(code)) return "⛅";
+  if ([45, 48].includes(code)) return "🌫";
+  if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) return "🌧";
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return "❄";
+  if ([95, 96, 99].includes(code)) return "⛈";
+  return "☕";
+}
+
 function toDateKey(date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -80,50 +81,37 @@ function toDateKey(date) {
 
 function normalizeDateKey(value) {
   if (!value) return "";
-
-  if (value instanceof Date) {
-    return toDateKey(value);
-  }
+  if (value instanceof Date) return toDateKey(value);
 
   const str = String(value).trim();
-
   if (/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(str)) return str;
 
   if (/^[0-9]{4}\/[0-9]{1,2}\/[0-9]{1,2}/.test(str)) {
     const parts = str.split(/[\/ ]/);
-    const y = parts[0];
-    const m = parts[1];
-    const d = parts[2];
-    return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    return `${parts[0]}-${String(parts[1]).padStart(2, "0")}-${String(parts[2]).padStart(2, "0")}`;
   }
 
   const parsed = new Date(str);
   if (!Number.isNaN(parsed.getTime())) return toDateKey(parsed);
-
   return str;
 }
 
 function getMonthKey(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  return `${y}-${m}`;
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
 function normalizeMonthValue(value) {
   if (!value) return "";
   const str = String(value).trim();
-
   if (str.includes("/")) {
     const [year, month] = str.split("/");
     return `${year}-${String(month).padStart(2, "0")}`;
   }
-
   return str.slice(0, 7);
 }
 
 function getActiveNamesForDate(date, versions, fallbackMembers = []) {
   if (!versions || versions.length === 0) return fallbackMembers;
-
   const targetMonth = getMonthKey(date);
 
   return versions
@@ -131,11 +119,7 @@ function getActiveNamesForDate(date, versions, fallbackMembers = []) {
       const name = String(m.name || "").trim();
       const start = normalizeMonthValue(m.startMonth);
       const end = normalizeMonthValue(m.endMonth);
-
       if (!name || !start) return false;
-
-      // endMonth is excluded from that month.
-      // Example: endMonth = 2026/5 means excluded from 2026-05 onward.
       return start <= targetMonth && (!end || end > targetMonth);
     })
     .map((m) => String(m.name || "").trim())
@@ -159,7 +143,7 @@ function getBusinessDayIndex(date, holidays) {
 
   for (let d = new Date(start); d <= date; d.setDate(d.getDate() + 1)) {
     const key = toDateKey(d);
-    if (!isWeekend(d) && !holidays.includes(key)) count++;
+    if (!isWeekend(d) && !holidays.includes(key)) count += 1;
   }
 
   return count;
@@ -167,10 +151,7 @@ function getBusinessDayIndex(date, holidays) {
 
 function getBaseCoffeeMember(date, members, holidays) {
   const key = toDateKey(date);
-
-  if (!members.length) return "";
-  if (isWeekend(date)) return "";
-  if (holidays.includes(key)) return "";
+  if (!members.length || isWeekend(date) || holidays.includes(key)) return "";
 
   const index = (getBusinessDayIndex(date, holidays) - 1) % members.length;
   return members[index] || "";
@@ -179,34 +160,24 @@ function getBaseCoffeeMember(date, members, holidays) {
 function getChangedMember(date, assignmentChanges) {
   const key = toDateKey(date);
   const changes = assignmentChanges.filter((item) => item.date === key);
-
   if (!changes.length) return "";
   return changes[changes.length - 1].newMember || "";
 }
 
 function getCoffeeMember(date, members, holidays, assignmentChanges) {
-  const changed = getChangedMember(date, assignmentChanges);
-  if (changed) return changed;
-
-  return getBaseCoffeeMember(date, members, holidays);
+  return getChangedMember(date, assignmentChanges) || getBaseCoffeeMember(date, members, holidays);
 }
 
 function isCoffeeRecordDone(record) {
   if (!record) return false;
-
-  // Old format: trash / water / clean are all true.
   if (record.trash && record.water && record.clean) return true;
-
-  // New GAS format: record exists with date/member/completedAt.
   if (record.date || record.member || record.completedAt) return true;
-
   return false;
 }
 
 function isCleaningRecordDone(record) {
   if (!record) return false;
-  if (record.date || record.member || record.completedBy || record.completedAt) return true;
-  return false;
+  return !!(record.date || record.member || record.completedBy || record.completedAt);
 }
 
 function buildCalendar(year, month) {
@@ -230,24 +201,19 @@ function getNthWeekdayOfMonth(year, month, weekday, nth) {
 function getCleaningDutiesForMonth(year, month, cleaningMembers) {
   const secondThursday = getNthWeekdayOfMonth(year, month, 4, 2);
   const fourthThursday = getNthWeekdayOfMonth(year, month, 4, 4);
-
   const baseIndex = (month - 1) * 2;
 
   return [
     {
       date: secondThursday,
       dateKey: toDateKey(secondThursday),
-      member: cleaningMembers.length
-        ? cleaningMembers[baseIndex % cleaningMembers.length]
-        : "",
+      member: cleaningMembers.length ? cleaningMembers[baseIndex % cleaningMembers.length] : "",
       area: "C",
     },
     {
       date: fourthThursday,
       dateKey: toDateKey(fourthThursday),
-      member: cleaningMembers.length
-        ? cleaningMembers[(baseIndex + 1) % cleaningMembers.length]
-        : "",
+      member: cleaningMembers.length ? cleaningMembers[(baseIndex + 1) % cleaningMembers.length] : "",
       area: "D",
     },
   ];
@@ -279,10 +245,7 @@ function MonthButton({ children, onClick }) {
       onMouseLeave={() => setPressed(false)}
       onTouchStart={() => setPressed(true)}
       onTouchEnd={() => setPressed(false)}
-      style={{
-        ...styles.monthButton,
-        ...(pressed ? styles.monthButtonPressed : {}),
-      }}
+      style={{ ...styles.monthButton, ...(pressed ? styles.monthButtonPressed : {}) }}
       aria-label="Change month"
     >
       {children}
@@ -305,9 +268,7 @@ function AppMotionStyles() {
         text-align: left !important;
       }
 
-      * {
-        box-sizing: border-box;
-      }
+      * { box-sizing: border-box; }
 
       @keyframes softPulseToday {
         0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.28), 0 8px 18px rgba(92,54,24,0.05); }
@@ -318,11 +279,6 @@ function AppMotionStyles() {
       @keyframes toastSlideIn {
         0% { transform: translateY(-8px); opacity: 0; }
         100% { transform: translateY(0); opacity: 1; }
-      }
-
-      @keyframes calendarOpen {
-        0% { transform: translateY(-14px) scale(0.98); opacity: 0; }
-        100% { transform: translateY(0) scale(1); opacity: 1; }
       }
 
       @keyframes checkPop {
@@ -364,9 +320,9 @@ function AppMotionStyles() {
         box-shadow: 0 14px 28px rgba(92,54,24,0.12) !important;
       }
 
-      .today-glow {
-        animation: softPulseToday 2.2s ease-in-out infinite;
-      }
+      .today-glow { animation: softPulseToday 2.2s ease-in-out infinite; }
+      .toast-message { animation: toastSlideIn 0.22s ease both; }
+      .check-pop { animation: checkPop 0.55s ease both; }
 
       .complete-button {
         transition: transform 0.14s ease, box-shadow 0.14s ease, filter 0.14s ease;
@@ -383,48 +339,14 @@ function AppMotionStyles() {
         box-shadow: 0 8px 18px rgba(124,45,18,0.22) !important;
       }
 
-      .toast-message {
-        animation: toastSlideIn 0.22s ease both;
-      }
-
-      .skeleton-shine {
-        background: linear-gradient(90deg, #f3e8dc 25%, #fff7ed 50%, #f3e8dc 75%);
-        background-size: 200% 100%;
-        animation: skeletonShine 1.1s ease infinite;
-      }
-
-      .check-pop {
-        animation: checkPop 0.55s ease both;
-      }
-
-      .calendar-panel-open {
-        animation: calendarOpen 0.28s ease both;
-      }
-
-      @media (max-width: 980px) {
-        .soft-card {
-          border-radius: 26px !important;
-        }
-      }
-
       @media (max-width: 720px) {
-        body {
-          overflow-x: hidden;
-        }
-
-        .soft-card {
-          border-radius: 22px !important;
-        }
-
-        button {
-          touch-action: manipulation;
-        }
+        body { overflow-x: hidden; }
+        .soft-card { border-radius: 22px !important; }
+        button { touch-action: manipulation; }
         .soft-card:hover,
         .info-hover-card:hover,
         .cleaning-hover-row:hover,
-        .calendar-day:hover {
-          transform: none;
-        }
+        .calendar-day:hover { transform: none; }
       }
     `}</style>
   );
@@ -454,8 +376,6 @@ export default function App() {
 
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
-
-  const [showCalendar, setShowCalendar] = useState(false);
   const [mobileTab, setMobileTab] = useState("today");
   const [showConfetti, setShowConfetti] = useState(false);
   const [showRules, setShowRules] = useState(false);
@@ -470,10 +390,6 @@ export default function App() {
   );
   const [installPrompt, setInstallPrompt] = useState(null);
   const [canInstall, setCanInstall] = useState(false);
-  const [darkMode, setDarkMode] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem("coffee-dark") === "1";
-  });
   const [weather, setWeather] = useState({ label: "東池袋", icon: "☕", temp: "--" });
 
   const [selectedDate, setSelectedDate] = useState(null);
@@ -495,7 +411,6 @@ export default function App() {
       cleaningMemberVersions,
       cleaningMembers
     );
-
     return getCleaningDutiesForMonth(year, month, activeCleaningMembers);
   }, [year, month, cleaningMembers, cleaningMemberVersions]);
 
@@ -509,20 +424,14 @@ export default function App() {
   );
 
   const todayMember = apiTodayMember || localTodayMember;
-
   const todayDone = !!apiRecord || isCoffeeRecordDone(records[todayKey]);
-
   const completedAt =
     apiRecord?.completedAt ||
     records[todayKey]?.completedAt ||
     records[todayKey]?.time ||
     "";
-
-  const hasTodayChange =
-    apiHasChange || !!getChangedMember(today, assignmentChanges);
-
-  const baseMember =
-    apiBaseMember || getBaseCoffeeMember(today, todayActiveMembers, holidays);
+  const hasTodayChange = apiHasChange || !!getChangedMember(today, assignmentChanges);
+  const baseMember = apiBaseMember || getBaseCoffeeMember(today, todayActiveMembers, holidays);
 
   function applyApiData(data) {
     setMembers(data.members || []);
@@ -558,9 +467,7 @@ export default function App() {
     try {
       const cached = localStorage.getItem(CACHE_KEY);
       if (!cached) return false;
-
-      const data = JSON.parse(cached);
-      applyApiData(data);
+      applyApiData(JSON.parse(cached));
       return true;
     } catch (error) {
       console.error(error);
@@ -573,9 +480,7 @@ export default function App() {
     setMessage("");
 
     const hasCache = loadCachedData();
-    if (hasCache && !forceRefresh) {
-      setLoading(false);
-    }
+    if (hasCache && !forceRefresh) setLoading(false);
 
     if (!navigator.onLine) {
       setMessage("Offline mode: showing the latest saved data.");
@@ -587,15 +492,10 @@ export default function App() {
       const url = forceRefresh ? `${API_URL}?t=${Date.now()}` : API_URL;
       const res = await fetch(url);
       const data = await res.json();
-
       localStorage.setItem(CACHE_KEY, JSON.stringify(data));
       applyApiData(data);
     } catch {
-      if (!hasCache) {
-        setMessage("Failed to load data. Please check the API connection.");
-      } else {
-        setMessage("Could not update. Showing cached data.");
-      }
+      setMessage(hasCache ? "Could not update. Showing cached data." : "Failed to load data. Please check the API connection.");
     } finally {
       setLoading(false);
     }
@@ -618,7 +518,6 @@ export default function App() {
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
-
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
@@ -626,39 +525,27 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const autoReload = setInterval(() => {
-      loadData(true);
-    }, 300000);
-
+    const autoReload = setInterval(() => loadData(true), 300000);
     return () => clearInterval(autoReload);
   }, []);
 
   useEffect(() => {
     let startY = 0;
-
     const handleTouchStart = (e) => {
       startY = e.touches[0].clientY;
     };
-
     const handleTouchEnd = (e) => {
       const endY = e.changedTouches[0].clientY;
-      if (window.scrollY === 0 && endY - startY > 90) {
-        loadData(true);
-      }
+      if (window.scrollY === 0 && endY - startY > 90) loadData(true);
     };
 
     window.addEventListener("touchstart", handleTouchStart, { passive: true });
     window.addEventListener("touchend", handleTouchEnd, { passive: true });
-
     return () => {
       window.removeEventListener("touchstart", handleTouchStart);
       window.removeEventListener("touchend", handleTouchEnd);
     };
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem("coffee-dark", darkMode ? "1" : "0");
-  }, [darkMode]);
 
   useEffect(() => {
     async function loadWeather() {
@@ -694,10 +581,7 @@ export default function App() {
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-
-    return () => {
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    };
+    return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
   }, []);
 
   async function postData(data) {
@@ -747,14 +631,13 @@ export default function App() {
       try {
         if (SLACK_WEBHOOK_URL) {
           await fetch(SLACK_WEBHOOK_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            text: `☕ Coffee completed by ${todayMember}`,
-          }),
-        });
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: `☕ Coffee completed by ${todayMember}` }),
+          });
         }
       } catch {}
+
       setTimeout(() => setShowCheck(false), 1100);
       setTimeout(() => setShowConfetti(false), 1800);
       setTimeout(() => setMessage(""), 2800);
@@ -765,7 +648,6 @@ export default function App() {
 
   const installApp = async () => {
     if (!installPrompt) return;
-
     installPrompt.prompt();
     await installPrompt.userChoice;
     setInstallPrompt(null);
@@ -775,9 +657,7 @@ export default function App() {
   const saveCleaningComplete = async (duty) => {
     if (duty.dateKey !== todayKey) return;
 
-    const completedBy = window.prompt(
-      "Enter your name to complete this report."
-    );
+    const completedBy = window.prompt("Enter your name to complete this report.");
     if (!completedBy) return;
 
     const data = {
@@ -792,10 +672,7 @@ export default function App() {
 
     try {
       await postData(data);
-      setCleaningRecords((prev) => ({
-        ...prev,
-        [duty.dateKey]: data,
-      }));
+      setCleaningRecords((prev) => ({ ...prev, [duty.dateKey]: data }));
       setMessage("Area cleaning report has been saved.");
       setTimeout(() => setMessage(""), 2500);
     } catch {
@@ -806,18 +683,8 @@ export default function App() {
   const openChangeForm = (date) => {
     if (isPastDate(date)) return;
 
-    const activeMembersForDate = getActiveNamesForDate(
-      date,
-      memberVersions,
-      members
-    );
-
-    const member = getCoffeeMember(
-      date,
-      activeMembersForDate,
-      holidays,
-      assignmentChanges
-    );
+    const activeMembersForDate = getActiveNamesForDate(date, memberVersions, members);
+    const member = getCoffeeMember(date, activeMembersForDate, holidays, assignmentChanges);
     if (!member) return;
 
     setSelectedDate(date);
@@ -835,18 +702,8 @@ export default function App() {
     }
 
     const dateKey = toDateKey(selectedDate);
-    const activeMembersForDate = getActiveNamesForDate(
-      selectedDate,
-      memberVersions,
-      members
-    );
-
-    const oldMember = getCoffeeMember(
-      selectedDate,
-      activeMembersForDate,
-      holidays,
-      assignmentChanges
-    );
+    const activeMembersForDate = getActiveNamesForDate(selectedDate, memberVersions, members);
+    const oldMember = getCoffeeMember(selectedDate, activeMembersForDate, holidays, assignmentChanges);
 
     const data = {
       action: "changeAssignment",
@@ -866,7 +723,7 @@ export default function App() {
       setSelectedDate(null);
       setMessage("Assignee change has been saved.");
       setTimeout(() => setMessage(""), 2500);
-      await loadData();
+      await loadData(true);
     } catch {
       setMessage("Failed to save the change.");
     }
@@ -891,7 +748,7 @@ export default function App() {
   };
 
   return (
-    <div style={{ ...styles.page, ...(darkMode ? styles.pageDark : {}) }}>
+    <div style={styles.page}>
       <AppMotionStyles />
       <div style={styles.decorCircleOne} />
       <div style={styles.decorCircleTwo} />
@@ -901,201 +758,119 @@ export default function App() {
           <div>
             <div style={styles.kicker}>Coffee Dolce Operations</div>
             <h1 style={styles.title}>Coffee Duty</h1>
-            <div style={styles.subtitle}>
-              A small daily routine, beautifully managed.
-            </div>
-            <div style={styles.quoteText}>
-              “Keep the coffee flowing ☕”
-            </div>
+            <div style={styles.subtitle}>A small daily routine, beautifully managed.</div>
+            <div style={styles.quoteText}>“Keep the coffee flowing ☕”</div>
           </div>
 
-          <div style={styles.weatherBadge}>
-            {weather.icon} {weather.temp}°C · {weather.label}
-          </div>
-
-          <div style={styles.headerRight}>
+          <div style={styles.headerControls}>
+            <div style={styles.weatherBadge}>{weather.icon} {weather.temp}°C · {weather.label}</div>
             {!isOnline && <div style={styles.offlineBadge}>Offline</div>}
             <div style={styles.versionBadge}>{appVersion}</div>
             {canInstall && (
-              <button type="button" onClick={installApp} style={styles.installButton}>
-                Install App
-              </button>
+              <button type="button" onClick={installApp} style={styles.installButton}>Install App</button>
             )}
-            <button
-              type="button"
-              onClick={() => setDarkMode((v) => !v)}
-              style={styles.darkModeButton}
-            >
-              {darkMode ? "Light" : "Dark"}
-            </button>
-
-            <button type="button" onClick={() => loadData(true)} style={styles.refreshButton}>
-              Refresh
-            </button>
+            <button type="button" onClick={() => loadData(true)} style={styles.refreshButton}>Refresh</button>
           </div>
         </header>
 
-        <div
-          style={{
-            ...styles.dashboardLayout,
-            ...(isMobile ? styles.dashboardLayoutMobile : {}),
-          }}
-        >
-        <main className="soft-card" style={styles.heroCard}>
-          <div style={styles.heroTopRow}>
-            <div>
-              <div style={styles.todayHeroCard}>
+        <div style={{ ...styles.topLayout, ...(isMobile ? styles.topLayoutMobile : {}) }}>
+          <main className="soft-card" style={styles.heroCard}>
+            <div style={styles.heroTopRow}>
+              <div>
                 <div style={styles.todayHeroKicker}>☕ TODAY DUTY</div>
                 <div style={styles.todayLabel}>Today's Coffee Cleaning Duty</div>
-              <div style={styles.todayMemberCompact}>
-                {loading && !todayMember ? (
-                  <span style={styles.skeletonText}>Loading...</span>
-                ) : (
-                  todayMember || "No duty today"
-                )}
+                <div style={styles.todayMemberCompact}>
+                  {loading && !todayMember ? <span style={styles.skeletonText}>Loading...</span> : todayMember || "No duty today"}
+                </div>
               </div>
-            </div>
-            </div>
 
-            <div style={styles.statusStack}>
-              {hasTodayChange && (
-                <div style={styles.changeBadge}>Changed Today</div>
-              )}
-
-              {todayDone ? (
-                <div style={styles.doneBadge}>
-                  Completed{completedAt ? ` · ${completedAt}` : ""}
-                </div>
-              ) : (
-                <div style={styles.pendingBadge}>Waiting Report</div>
-              )}
-            </div>
-          </div>
-          <div style={styles.infoGrid}>
-            <div className="info-hover-card" style={styles.infoCard}>
-              <div style={styles.infoLabel}>Base Assignee</div>
-              <div style={styles.infoValue}>{baseMember || "-"}</div>
-            </div>
-
-            <div className="info-hover-card" style={styles.infoCard}>
-              <div style={styles.infoLabel}>Next Duty</div>
-              <div style={styles.infoValue}>{apiNextDuty?.member || "-"}</div>
-              {apiNextDuty?.date && (
-                <div style={styles.infoSub}>{apiNextDuty.date}</div>
-              )}
-            </div>
-
-            <div className="info-hover-card" style={styles.infoCard}>
-              <div style={styles.infoLabel}>Today</div>
-              <div style={styles.infoValue}>{todayKey}</div>
-            </div>
-          </div>
-
-          <button
-            className="complete-button"
-            type="button"
-            onClick={saveCoffeeComplete}
-            disabled={!todayMember || todayDone}
-            style={{
-              ...styles.primaryButton,
-              ...(!todayMember || todayDone ? styles.disabledButton : {}),
-            }}
-          >
-            {todayDone ? "Completed" : "Complete Coffee Cleaning"}
-          </button>
-
-          {message && (
-            <div className="toast-message" style={styles.message}>
-              <span style={styles.slackIcon}>#</span>
-              <span>{message}</span>
-            </div>
-          )}
-        </main>
-
-        <section style={styles.cleaningSection}>
-          <div style={styles.sectionHeader}>
-            <div>
-              <div style={styles.sectionKicker}>Floor Cleaning</div>
-              <h2 style={styles.sectionTitle}>Monthly Area Cleaning Duty</h2>
-            </div>
-          </div>
-
-          <div style={styles.cleaningList}>
-            {monthCleaningDuties.map((duty) => {
-              const done = isCleaningRecordDone(cleaningRecords[duty.dateKey]);
-              const completedBy = cleaningRecords[duty.dateKey]?.completedBy || "";
-              const canComplete = duty.dateKey === todayKey && !done;
-
-              return (
-                <div
-                  key={duty.dateKey}
-                  className="cleaning-hover-row"
-                  style={{
-                    ...styles.cleaningDutyRow,
-                    ...(done ? styles.cleaningDutyRowDone : {}),
-                    ...(isMobile ? styles.cleaningDutyRowMobile : {}),
-                  }}
-                >
-                  <div>
-                    <div style={styles.cleaningDutyDate}>{duty.dateKey}</div>
-                    <div style={styles.cleaningDutyMember}>
-                      {duty.member || "Unassigned"}
-                    </div>
-                    {done && completedBy && (
-                      <div style={styles.completedByText}>
-                        Completed by {completedBy}
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={styles.cleaningDutyArea}>Area {duty.area}</div>
-
-                  <button
-                    type="button"
-                    onClick={() => saveCleaningComplete(duty)}
-                    disabled={!canComplete}
-                    style={{
-                      ...styles.cleaningCompleteButton,
-                      ...(!canComplete
-                        ? styles.cleaningCompleteButtonDisabled
-                        : {}),
-                    }}
-                  >
-                    {done ? "Completed" : "Complete"}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        <div style={styles.rightColumn}>
-          <section style={styles.cleaningSection}>
-            <div style={styles.sectionHeader}>
-              <div>
-                <div style={styles.sectionKicker}>Quick Status</div>
-                <h2 style={styles.sectionTitle}>Today's Overview</h2>
+              <div style={styles.statusStack}>
+                {hasTodayChange && <div style={styles.changeBadge}>Changed Today</div>}
+                {todayDone ? (
+                  <div style={styles.doneBadge}>Completed{completedAt ? ` · ${completedAt}` : ""}</div>
+                ) : (
+                  <div style={styles.pendingBadge}>Waiting Report</div>
+                )}
               </div>
             </div>
 
             <div style={styles.infoGrid}>
               <div className="info-hover-card" style={styles.infoCard}>
-                <div style={styles.infoLabel}>Today Duty</div>
-                <div style={styles.infoValue}>{todayMember || "-"}</div>
+                <div style={styles.infoLabel}>Base Assignee</div>
+                <div style={styles.infoValue}>{baseMember || "-"}</div>
               </div>
-
               <div className="info-hover-card" style={styles.infoCard}>
-                <div style={styles.infoLabel}>Status</div>
-                <div style={styles.infoValue}>{todayDone ? "Done" : "Waiting"}</div>
+                <div style={styles.infoLabel}>Next Duty</div>
+                <div style={styles.infoValue}>{apiNextDuty?.member || "-"}</div>
+                {apiNextDuty?.date && <div style={styles.infoSub}>{apiNextDuty.date}</div>}
               </div>
-
               <div className="info-hover-card" style={styles.infoCard}>
-                <div style={styles.infoLabel}>Weather</div>
-                <div style={styles.infoValue}>{weather.icon} {weather.temp}°C</div>
+                <div style={styles.infoLabel}>Today</div>
+                <div style={styles.infoValue}>{todayKey}</div>
               </div>
             </div>
+
+            <button
+              className="complete-button"
+              type="button"
+              onClick={saveCoffeeComplete}
+              disabled={!todayMember || todayDone}
+              style={{ ...styles.primaryButton, ...(!todayMember || todayDone ? styles.disabledButton : {}) }}
+            >
+              {todayDone ? "Completed" : "Complete Coffee Cleaning"}
+            </button>
+
+            {message && (
+              <div className="toast-message" style={styles.message}>
+                <span style={styles.slackIcon}>#</span>
+                <span>{message}</span>
+              </div>
+            )}
+          </main>
+
+          <section style={styles.cleaningSection}>
+            <div style={styles.sectionHeader}>
+              <div>
+                <div style={styles.sectionKicker}>Floor Cleaning</div>
+                <h2 style={styles.sectionTitle}>Monthly Area Cleaning Duty</h2>
+              </div>
+            </div>
+
+            <div style={styles.cleaningList}>
+              {monthCleaningDuties.map((duty) => {
+                const done = isCleaningRecordDone(cleaningRecords[duty.dateKey]);
+                const completedBy = cleaningRecords[duty.dateKey]?.completedBy || "";
+                const canComplete = duty.dateKey === todayKey && !done;
+
+                return (
+                  <div
+                    key={duty.dateKey}
+                    className="cleaning-hover-row"
+                    style={{
+                      ...styles.cleaningDutyRow,
+                      ...(done ? styles.cleaningDutyRowDone : {}),
+                      ...(isMobile ? styles.cleaningDutyRowMobile : {}),
+                    }}
+                  >
+                    <div>
+                      <div style={styles.cleaningDutyDate}>{duty.dateKey}</div>
+                      <div style={styles.cleaningDutyMember}>{duty.member || "Unassigned"}</div>
+                      {done && completedBy && <div style={styles.completedByText}>Completed by {completedBy}</div>}
+                    </div>
+                    <div style={styles.cleaningDutyArea}>Area {duty.area}</div>
+                    <button
+                      type="button"
+                      onClick={() => saveCleaningComplete(duty)}
+                      disabled={!canComplete}
+                      style={{ ...styles.cleaningCompleteButton, ...(!canComplete ? styles.cleaningCompleteButtonDisabled : {}) }}
+                    >
+                      {done ? "Completed" : "Complete"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </section>
-        </div>
         </div>
 
         {isMobile && (
@@ -1117,95 +892,37 @@ export default function App() {
           </div>
         )}
 
-        <div
-          style={{
-            ...(isMobile && mobileTab !== "today" ? { display: "none" } : {}),
-            ...styles.commandArea,
-            ...(isMobile ? styles.commandAreaMobile : {}),
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => setShowRules(true)}
-            style={{ ...styles.tabButton, ...styles.ruleButton }}
-          >
+        <div style={{ ...(isMobile && mobileTab !== "today" ? { display: "none" } : {}), ...styles.commandArea }}>
+          <button type="button" onClick={() => setShowRules(true)} style={{ ...styles.tabButton, ...styles.ruleButton }}>
             Cleaning Rules
           </button>
-
-          <button
-            type="button"
-            onClick={() => setShowCalendar((v) => !v)}
-            style={{ ...styles.tabButton, ...styles.secondaryButton }}
-          >
-            {showCalendar ? "Close Calendar" : "Open Calendar"}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setShowMap(true)}
-            style={{ ...styles.tabButton, ...styles.mapTabButton }}
-          >
+          <button type="button" onClick={() => setShowMap(true)} style={{ ...styles.tabButton, ...styles.mapTabButton }}>
             Cleaning Area
           </button>
         </div>
 
-        <section
-          style={{
-            ...(isMobile && mobileTab !== "calendar" ? { display: "none" } : {}),
-            ...styles.calendarPanel,
-            maxHeight: showCalendar ? 980 : 0,
-            opacity: showCalendar ? 1 : 0,
-            transform: showCalendar ? "translateY(0)" : "translateY(-12px)",
-            pointerEvents: showCalendar ? "auto" : "none",
-          }}
-        >
+        <section style={{ ...(isMobile && mobileTab !== "calendar" ? { display: "none" } : {}), ...styles.calendarPanel }}>
           <div style={styles.calendarHeader}>
             <MonthButton onClick={movePrevMonth}>‹</MonthButton>
-            <div style={styles.monthTitle}>
-              {MONTH_NAMES[month - 1]} {year}
-            </div>
+            <div style={styles.monthTitle}>{MONTH_NAMES[month - 1]} {year}</div>
             <MonthButton onClick={moveNextMonth}>›</MonthButton>
           </div>
 
           <div style={isMobile ? styles.calendarScroll : undefined}>
-            <div
-              style={{
-                ...styles.weekGrid,
-                ...(isMobile ? styles.weekGridMobile : {}),
-              }}
-            >
+            <div style={{ ...styles.weekGrid, ...(isMobile ? styles.weekGridMobile : {}) }}>
               {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((w) => (
-                <div key={w} style={styles.weekHeader}>
-                  {w}
-                </div>
+                <div key={w} style={styles.weekHeader}>{w}</div>
               ))}
             </div>
 
-            <div
-              style={{
-                ...styles.calendarGrid,
-                ...(isMobile ? styles.calendarGridMobile : {}),
-              }}
-            >
+            <div style={{ ...styles.calendarGrid, ...(isMobile ? styles.calendarGridMobile : {}) }}>
               {days.map((date) => {
                 const key = toDateKey(date);
                 const inMonth = date.getMonth() + 1 === month;
                 const holiday = holidays.includes(key);
                 const weekend = isWeekend(date);
-
-                const activeMembersForDate = getActiveNamesForDate(
-                  date,
-                  memberVersions,
-                  members
-                );
-
-                const member = getCoffeeMember(
-                  date,
-                  activeMembersForDate,
-                  holidays,
-                  assignmentChanges
-                );
-
+                const activeMembersForDate = getActiveNamesForDate(date, memberVersions, members);
+                const member = getCoffeeMember(date, activeMembersForDate, holidays, assignmentChanges);
                 const done = isCoffeeRecordDone(records[key]);
                 const isToday = key === todayKey;
                 const changed = !!getChangedMember(date, assignmentChanges);
@@ -1222,10 +939,7 @@ export default function App() {
                   <div
                     key={key}
                     className={`calendar-day ${isToday ? "today-glow" : ""}`}
-                    style={{
-                      ...cellStyle,
-                      cursor: canChange ? "pointer" : "default",
-                    }}
+                    style={{ ...cellStyle, cursor: canChange ? "pointer" : "default" }}
                     onContextMenu={(e) => {
                       e.preventDefault();
                       openChangeForm(date);
@@ -1236,16 +950,10 @@ export default function App() {
                     title={canChange ? "Click to change assignee" : ""}
                   >
                     <div style={styles.dayNumber}>{date.getDate()}</div>
-
-                    {inMonth && holiday && (
-                      <div style={styles.holidayText}>Holiday</div>
-                    )}
-
+                    {inMonth && holiday && <div style={styles.holidayText}>Holiday</div>}
                     {inMonth && member && (
                       <>
-                        <div style={styles.memberName} title={member}>
-                          {member}
-                        </div>
+                        <div style={styles.memberName} title={member}>{member}</div>
                         {changed && <div style={styles.changedMark}>Changed</div>}
                       </>
                     )}
@@ -1268,11 +976,7 @@ export default function App() {
           {Array.from({ length: 28 }).map((_, i) => (
             <div
               key={i}
-              style={{
-                ...styles.confetti,
-                left: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 0.6}s`,
-              }}
+              style={{ ...styles.confetti, left: `${Math.random() * 100}%`, animationDelay: `${Math.random() * 0.6}s` }}
             />
           ))}
         </div>
@@ -1284,13 +988,9 @@ export default function App() {
             <div style={styles.modalHeader}>
               <div>
                 <h2 style={styles.modalTitle}>Cleaning Rules</h2>
-                <div style={styles.modalSubText}>
-                  Daily operating procedure for keeping the coffee area clean.
-                </div>
+                <div style={styles.modalSubText}>Daily operating procedure for keeping the coffee area clean.</div>
               </div>
-              <button type="button" onClick={() => setShowRules(false)} style={styles.cancelButton}>
-                Close
-              </button>
+              <button type="button" onClick={() => setShowRules(false)} style={styles.cancelButton}>Close</button>
             </div>
 
             <div style={styles.ruleList}>
@@ -1314,23 +1014,15 @@ export default function App() {
 
               <div style={{ ...styles.ruleSection, ...styles.ruleMachine }}>
                 <div style={styles.ruleTitle}>Coffee Machine Cleaning Guide</div>
-
                 <div style={styles.machineOverviewCard}>
                   <div style={styles.machineOverviewHeader}>
                     <div>
                       <div style={styles.machineOverviewTitle}>Parts Guide</div>
-                      <div style={styles.machineOverviewSubText}>
-                        Select a part to review cleaning steps.
-                      </div>
+                      <div style={styles.machineOverviewSubText}>Select a part to review cleaning steps.</div>
                     </div>
                     <div style={styles.machineOverviewBadge}>Manual</div>
                   </div>
-
-                  <img
-                    src={MACHINE_OVERVIEW_URL}
-                    alt="Coffee machine parts overview"
-                    style={styles.machineOverviewImage}
-                  />
+                  <img src={MACHINE_OVERVIEW_URL} alt="Coffee machine parts overview" style={styles.machineOverviewImage} />
                 </div>
 
                 <div style={{ ...styles.partTabs, ...(isMobile ? styles.partTabsMobile : {}) }}>
@@ -1350,14 +1042,11 @@ export default function App() {
                   <div style={{ ...styles.partImageBox, ...(isMobile ? styles.partImageBoxMobile : {}) }}>
                     <img src={selectedPart.image} alt={selectedPart.label} style={styles.partImage} />
                   </div>
-
                   <div style={styles.partDetailTextBox}>
                     <div style={styles.partBadge}>{selectedPart.badge}</div>
                     <div style={styles.partTitle}>{selectedPart.label}</div>
                     <ol style={styles.partSteps}>
-                      {selectedPart.steps.map((step, index) => (
-                        <li key={index}>{step}</li>
-                      ))}
+                      {selectedPart.steps.map((step, index) => <li key={index}>{step}</li>)}
                     </ol>
                   </div>
                 </div>
@@ -1381,21 +1070,15 @@ export default function App() {
             <div style={styles.modalHeader}>
               <div>
                 <h2 style={styles.modalTitle}>Cleaning Area</h2>
-                <div style={styles.modalSubText}>
-                  Check the assigned area and clean the corresponding space.
-                </div>
+                <div style={styles.modalSubText}>Check the assigned area and clean the corresponding space.</div>
               </div>
-              <button type="button" onClick={() => setShowMap(false)} style={styles.cancelButton}>
-                Close
-              </button>
+              <button type="button" onClick={() => setShowMap(false)} style={styles.cancelButton}>Close</button>
             </div>
-
             <div style={styles.mapViewer}>
               <div style={styles.mapToolbar}>
                 <div style={styles.mapToolbarTitle}>Cleaning Area Map</div>
                 <div style={styles.mapToolbarBadge}>Reference</div>
               </div>
-
               <div style={styles.mapImageFrame}>
                 <img src={CLEANING_MAP_URL} alt="Cleaning area map" style={styles.cleaningMapImage} />
               </div>
@@ -1428,42 +1111,21 @@ export default function App() {
             </button>
 
             <label style={styles.formLabel}>Changed By</label>
-            <input
-              value={changeName}
-              onChange={(e) => setChangeName(e.target.value)}
-              style={styles.input}
-              placeholder="e.g. Takagi"
-            />
+            <input value={changeName} onChange={(e) => setChangeName(e.target.value)} style={styles.input} placeholder="e.g. Takagi" />
 
             <label style={styles.formLabel}>New Assignee</label>
-            <select
-              value={changeMember}
-              onChange={(e) => setChangeMember(e.target.value)}
-              style={styles.input}
-            >
+            <select value={changeMember} onChange={(e) => setChangeMember(e.target.value)} style={styles.input}>
               {getActiveNamesForDate(selectedDate, memberVersions, members).map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
+                <option key={m} value={m}>{m}</option>
               ))}
             </select>
 
             <label style={styles.formLabel}>Reason Optional</label>
-            <input
-              value={changeReason}
-              onChange={(e) => setChangeReason(e.target.value)}
-              style={styles.input}
-              placeholder="e.g. Substitute duty"
-            />
+            <input value={changeReason} onChange={(e) => setChangeReason(e.target.value)} style={styles.input} placeholder="e.g. Substitute duty" />
 
             <div style={styles.modalActions}>
-              <button type="button" onClick={() => setSelectedDate(null)} style={styles.cancelButton}>
-                Cancel
-              </button>
-
-              <button type="button" onClick={saveAssignmentChange} style={styles.saveButton}>
-                Save
-              </button>
+              <button type="button" onClick={() => setSelectedDate(null)} style={styles.cancelButton}>Cancel</button>
+              <button type="button" onClick={saveAssignmentChange} style={styles.saveButton}>Save</button>
             </div>
           </div>
         </div>
@@ -1473,161 +1135,6 @@ export default function App() {
 }
 
 const styles = {
-  darkModeButton: {
-    padding: "9px 13px",
-    borderRadius: 999,
-    border: "1px solid rgba(146,64,14,0.12)",
-    background: "#24160f",
-    color: "#ffffff",
-    fontSize: 12,
-    fontWeight: 950,
-    cursor: "pointer",
-  },
-  weatherBadge: {
-    padding: "8px 12px",
-    borderRadius: 999,
-    background: "#fff7ed",
-    border: "1px solid #fed7aa",
-    color: "#9a3412",
-    fontSize: 12,
-    fontWeight: 950,
-  },
-  quoteText: {
-    marginTop: 8,
-    fontSize: 13,
-    fontWeight: 700,
-    color: "#7c5a46",
-    fontStyle: "italic",
-  },
-  todayHeroCard: {
-    padding: "10px 0",
-  },
-  todayHeroKicker: {
-    marginBottom: 8,
-    fontSize: 11,
-    fontWeight: 950,
-    color: "#9a3412",
-    letterSpacing: "0.12em",
-  },
-  stickyHeader: {
-    position: "sticky",
-    top: 10,
-    zIndex: 30,
-    marginBottom: 14,
-  },
-  stickyInner: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-    padding: "12px 16px",
-    borderRadius: 999,
-    background: "rgba(255,255,255,0.82)",
-    backdropFilter: "blur(14px)",
-    border: "1px solid rgba(146,64,14,0.12)",
-    boxShadow: "0 14px 30px rgba(92,54,24,0.12)",
-  },
-  stickyTodayLabel: {
-    fontSize: 11,
-    fontWeight: 950,
-    color: "#9a3412",
-    textTransform: "uppercase",
-    letterSpacing: "0.08em",
-  },
-  stickyTodayMember: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: 950,
-    color: "#24160f",
-  },
-  stickyDonePill: {
-    padding: "7px 11px",
-    borderRadius: 999,
-    background: "#f6eadf",
-    border: "1px solid #dfc2a8",
-    color: "#7c2d12",
-    fontSize: 12,
-    fontWeight: 950,
-  },
-  stickyWaitingPill: {
-    padding: "7px 11px",
-    borderRadius: 999,
-    background: "#fff7ed",
-    border: "1px solid #fed7aa",
-    color: "#9a3412",
-    fontSize: 12,
-    fontWeight: 950,
-  },
-  mobileTabs: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: 8,
-    marginBottom: 14,
-  },
-  mobileTab: {
-    padding: "11px 8px",
-    borderRadius: 999,
-    border: "1px solid #e7d4c2",
-    background: "#ffffff",
-    fontSize: 12,
-    fontWeight: 900,
-    color: "#7c2d12",
-  },
-  mobileTabActive: {
-    padding: "11px 8px",
-    borderRadius: 999,
-    border: "1px solid #7c2d12",
-    background: "#7c2d12",
-    fontSize: 12,
-    fontWeight: 900,
-    color: "#ffffff",
-  },
-  confettiWrap: {
-    position: "fixed",
-    inset: 0,
-    pointerEvents: "none",
-    overflow: "hidden",
-    zIndex: 90,
-  },
-  confetti: {
-    position: "absolute",
-    top: -20,
-    width: 10,
-    height: 18,
-    borderRadius: 3,
-    background: "#b45309",
-    animation: "confettiFall 1.6s linear forwards",
-  },
-  historyInfoBox: {
-    marginTop: 10,
-    padding: 12,
-    borderRadius: 16,
-    background: "#fff7ed",
-    border: "1px solid #fed7aa",
-  },
-  historyTitle: {
-    fontSize: 12,
-    fontWeight: 950,
-    color: "#9a3412",
-    marginBottom: 6,
-  },
-  historyText: {
-    fontSize: 12,
-    fontWeight: 700,
-    color: "#5c3b2a",
-    marginTop: 2,
-  },
-  slackOpenButton: {
-    marginTop: 12,
-    width: "100%",
-    padding: "12px 14px",
-    borderRadius: 999,
-    border: "none",
-    background: "#4a154b",
-    color: "#ffffff",
-    fontWeight: 950,
-    cursor: "pointer",
-  },
   page: {
     minHeight: "100vh",
     width: "100vw",
@@ -1640,11 +1147,6 @@ const styles = {
     letterSpacing: "0.01em",
     position: "relative",
     overflowX: "hidden",
-  },
-  pageDark: {
-    background:
-      "radial-gradient(circle at top left, rgba(180,83,9,0.18) 0, transparent 34%), radial-gradient(circle at top right, rgba(30,41,59,0.42) 0, transparent 30%), linear-gradient(135deg, #1c120c 0%, #24160f 48%, #0f172a 100%)",
-    color: "#fff7ed",
   },
   decorCircleOne: {
     position: "fixed",
@@ -1681,6 +1183,13 @@ const styles = {
     marginBottom: 22,
     flexWrap: "wrap",
   },
+  headerControls: {
+    display: "flex",
+    gap: 8,
+    alignItems: "center",
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
+  },
   kicker: {
     fontSize: 12,
     fontWeight: 900,
@@ -1702,10 +1211,21 @@ const styles = {
     fontSize: 13,
     fontWeight: 750,
   },
-  headerRight: {
-    display: "flex",
-    gap: 8,
-    alignItems: "center",
+  quoteText: {
+    marginTop: 8,
+    fontSize: 13,
+    fontWeight: 700,
+    color: "#7c5a46",
+    fontStyle: "italic",
+  },
+  weatherBadge: {
+    padding: "8px 12px",
+    borderRadius: 999,
+    background: "#fff7ed",
+    border: "1px solid #fed7aa",
+    color: "#9a3412",
+    fontSize: 12,
+    fontWeight: 950,
   },
   versionBadge: {
     padding: "8px 12px",
@@ -1748,21 +1268,16 @@ const styles = {
     cursor: "pointer",
     boxShadow: "0 10px 24px rgba(120, 53, 15, 0.08)",
   },
-  dashboardLayout: {
+  topLayout: {
     display: "grid",
-    gridTemplateColumns: "minmax(360px, 1.15fr) minmax(300px, 0.85fr) minmax(300px, 0.85fr)",
+    gridTemplateColumns: "minmax(420px, 1.15fr) minmax(360px, 0.85fr)",
     gap: 20,
     alignItems: "start",
     width: "100%",
   },
-  dashboardLayoutMobile: {
+  topLayoutMobile: {
     gridTemplateColumns: "1fr",
-  },
-  rightColumn: {
-    display: "grid",
-    gap: 18,
-    alignContent: "start",
-    marginTop: 18,
+    gap: 14,
   },
   heroCard: {
     padding: "clamp(18px, 2vw, 30px)",
@@ -1778,6 +1293,13 @@ const styles = {
     alignItems: "flex-start",
     gap: 18,
     flexWrap: "wrap",
+  },
+  todayHeroKicker: {
+    marginBottom: 8,
+    fontSize: 11,
+    fontWeight: 950,
+    color: "#9a3412",
+    letterSpacing: "0.12em",
   },
   todayLabel: {
     fontSize: 12,
@@ -1796,7 +1318,7 @@ const styles = {
     background:
       "linear-gradient(135deg, rgba(120,53,15,0.12), rgba(253,230,138,0.42))",
     border: "1px solid rgba(146,64,14,0.16)",
-    fontSize: "clamp(26px, 5vw, 54px)",
+    fontSize: "clamp(30px, 4vw, 58px)",
     fontWeight: 950,
     letterSpacing: "-0.04em",
     color: "#2b170e",
@@ -1819,11 +1341,11 @@ const styles = {
   doneBadge: {
     padding: "8px 12px",
     borderRadius: 999,
-    background: "#ead7c5",
+    background: "#f6eadf",
     color: "#7c2d12",
     fontSize: 12,
     fontWeight: 950,
-    border: "1px solid #b98a64",
+    border: "1px solid #dfc2a8",
   },
   pendingBadge: {
     padding: "8px 12px",
@@ -1836,7 +1358,7 @@ const styles = {
   },
   infoGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
     gap: 12,
     margin: "22px 0",
   },
@@ -1942,7 +1464,6 @@ const styles = {
     animation: "checkPop 0.55s ease both",
   },
   cleaningSection: {
-    marginTop: 0,
     padding: "clamp(16px, 2vw, 24px)",
     borderRadius: 28,
     background: "rgba(255,255,255,0.72)",
@@ -2034,9 +1555,6 @@ const styles = {
     width: "100%",
     margin: "20px 0 18px",
   },
-  commandAreaMobile: {
-    gridTemplateColumns: "1fr",
-  },
   tabButton: {
     width: "100%",
     minHeight: 46,
@@ -2054,20 +1572,37 @@ const styles = {
     background: "#fff7ed",
     color: "#9a3412",
   },
-  secondaryButton: {
-    border: "1px solid #cbd5e1",
-    background: "rgba(255,255,255,0.95)",
-    color: "#1e293b",
-  },
   mapTabButton: {
     border: "1px solid #bfdbfe",
     background: "#eff6ff",
     color: "#1d4ed8",
   },
+  mobileTabs: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: 8,
+    margin: "20px 0 14px",
+  },
+  mobileTab: {
+    padding: "11px 8px",
+    borderRadius: 999,
+    border: "1px solid #e7d4c2",
+    background: "#ffffff",
+    fontSize: 12,
+    fontWeight: 900,
+    color: "#7c2d12",
+  },
+  mobileTabActive: {
+    padding: "11px 8px",
+    borderRadius: 999,
+    border: "1px solid #7c2d12",
+    background: "#7c2d12",
+    fontSize: 12,
+    fontWeight: 900,
+    color: "#ffffff",
+  },
   calendarPanel: {
     overflow: "visible",
-    transition:
-      "max-height 0.45s ease, opacity 0.3s ease, transform 0.35s ease",
     paddingBottom: 30,
   },
   calendarHeader: {
@@ -2076,7 +1611,7 @@ const styles = {
     justifyContent: "center",
     gap: 18,
     marginBottom: 10,
-    height: 50,
+    height: 58,
   },
   monthButton: {
     width: 56,
@@ -2129,7 +1664,7 @@ const styles = {
   calendarGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
-    gridAutoRows: "clamp(92px, 8.5vw, 140px)",
+    gridAutoRows: "clamp(92px, 8vw, 138px)",
     gap: 6,
     paddingBottom: 18,
   },
@@ -2152,7 +1687,6 @@ const styles = {
     height: "100%",
     borderRadius: 18,
     padding: 10,
-    boxSizing: "border-box",
     overflow: "hidden",
     background: "rgba(255,255,255,0.9)",
     border: "1px solid rgba(146,64,14,0.12)",
@@ -2205,9 +1739,21 @@ const styles = {
     color: "#9a3412",
     background: "#ffedd5",
   },
-  mobileContainer: {
-    width: "100%",
-    overflowX: "hidden",
+  confettiWrap: {
+    position: "fixed",
+    inset: 0,
+    pointerEvents: "none",
+    overflow: "hidden",
+    zIndex: 90,
+  },
+  confetti: {
+    position: "absolute",
+    top: -20,
+    width: 10,
+    height: 18,
+    borderRadius: 3,
+    background: "#b45309",
+    animation: "confettiFall 1.6s linear forwards",
   },
   modalOverlay: {
     position: "fixed",
@@ -2271,6 +1817,36 @@ const styles = {
     color: "#7c5a46",
     fontWeight: 850,
   },
+  historyInfoBox: {
+    marginTop: 10,
+    padding: 12,
+    borderRadius: 16,
+    background: "#fff7ed",
+    border: "1px solid #fed7aa",
+  },
+  historyTitle: {
+    fontSize: 12,
+    fontWeight: 950,
+    color: "#9a3412",
+    marginBottom: 6,
+  },
+  historyText: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: "#5c3b2a",
+    marginTop: 2,
+  },
+  slackOpenButton: {
+    marginTop: 12,
+    width: "100%",
+    padding: "12px 14px",
+    borderRadius: 999,
+    border: "none",
+    background: "#4a154b",
+    color: "#ffffff",
+    fontWeight: 950,
+    cursor: "pointer",
+  },
   formLabel: {
     display: "block",
     textAlign: "left",
@@ -2284,7 +1860,6 @@ const styles = {
   },
   input: {
     width: "100%",
-    boxSizing: "border-box",
     padding: "12px 14px",
     borderRadius: 14,
     border: "1px solid #d6d3d1",
@@ -2397,7 +1972,6 @@ const styles = {
     display: "block",
     background: "#ffffff",
     padding: 12,
-    boxSizing: "border-box",
   },
   partTabs: {
     display: "grid",

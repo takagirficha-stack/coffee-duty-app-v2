@@ -376,7 +376,6 @@ export default function App() {
 
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
-  const [mobileTab, setMobileTab] = useState("today");
   const [showConfetti, setShowConfetti] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [showMap, setShowMap] = useState(false);
@@ -1000,25 +999,7 @@ export default function App() {
           </section>
         </div>
 
-        {isMobile && (
-          <div style={styles.mobileTabs}>
-            {[
-              ["today", "Today"],
-              ["calendar", "Calendar"],
-            ].map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setMobileTab(key)}
-                style={mobileTab === key ? styles.mobileTabActive : styles.mobileTab}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        <div style={{ ...(isMobile && mobileTab !== "today" ? { display: "none" } : {}), ...styles.commandArea }}>
+        <div style={styles.commandArea}>
           <button type="button" onClick={() => setShowRules(true)} style={{ ...styles.tabButton, ...styles.ruleButton }}>
             Cleaning Rules
           </button>
@@ -1030,7 +1011,7 @@ export default function App() {
           </button>
         </div>
 
-        <section style={{ ...(isMobile && mobileTab !== "calendar" ? { display: "none" } : {}), ...styles.calendarPanel }}>
+        <section style={styles.calendarPanel}>
           <div style={styles.calendarHeader}>
             <MonthButton onClick={movePrevMonth}>‹</MonthButton>
             <div style={styles.monthTitle}>{MONTH_NAMES[month - 1]} {year}</div>
@@ -2088,30 +2069,6 @@ const styles = {
     fontWeight: 700,
     color: "#7c5a46",
     lineHeight: 1.55,
-  },
-  mobileTabs: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: 8,
-    margin: "20px 0 14px",
-  },
-  mobileTab: {
-    padding: "11px 8px",
-    borderRadius: 999,
-    border: "1px solid #e7d4c2",
-    background: "#ffffff",
-    fontSize: 12,
-    fontWeight: 900,
-    color: "#7c2d12",
-  },
-  mobileTabActive: {
-    padding: "11px 8px",
-    borderRadius: 999,
-    border: "1px solid #7c2d12",
-    background: "#7c2d12",
-    fontSize: 12,
-    fontWeight: 900,
-    color: "#ffffff",
   },
   calendarPanel: {
     overflow: "visible",

@@ -672,7 +672,21 @@ export default function App() {
   const adminCategoryOptions = ["Coffee", "Latte", "Iced", "Espresso", "Tea", "Sweet", "Other"];
 
   const visibleSurveyItems = useMemo(() => {
-    const source = products.length ? products : surveyItems;
+    const source = products.length
+      ? products.map((product) => {
+          const fallback = surveyItems.find((item) => item.id === product.id) || {};
+          return {
+            ...fallback,
+            ...product,
+            description: product.description || fallback.description || "No description available.",
+            price: product.price || fallback.price || "-",
+            size: product.size || fallback.size || "Standard capsule box",
+            category: product.category || fallback.category || "Coffee",
+            badge: product.badge || fallback.badge || "",
+          };
+        })
+      : surveyItems;
+
     return source
       .filter((item) => item.isVisible !== false)
       .filter((item) => surveyCategory === "All" || item.category === surveyCategory);

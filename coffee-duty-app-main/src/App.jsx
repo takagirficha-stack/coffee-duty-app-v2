@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 const API_URL =
-  "https://script.google.com/macros/s/AKfycbx41QCs8kYM81auy4klVGdwyzTQhs2t8RRpm3s2eWCiymHI-r3JjPpZ2jkOAzln_lQ_/exec";
+  "https://script.google.com/macros/s/AKfycbzdRQAUFEGiiBVgMPHbtj61GPdxdnFLuxrj53Zydagj2NwBGMd-R3_EbDVhR18jJDkDVQ/exec";
 
 const CLEANING_MAP_URL = "/cleaning-map.jpg";
 const MACHINE_OVERVIEW_URL = "/machine-overview.png";
@@ -1537,9 +1537,18 @@ export default function App() {
                       View details
                     </span>
                     <div style={styles.productMeta}>
-                      <div>Strong {"★".repeat(Number(item.strong || 0)) || "-"}</div>
-                      <div>Milk {"★".repeat(Number(item.milk || 0)) || "-"}</div>
-                      <div>Sweet {"★".repeat(Number(item.sweet || 0)) || "-"}</div>
+                      <div style={styles.productMetaRow}>
+                        <span style={styles.productMetaLabel}>Strong</span>
+                        <span style={styles.productMetaStars}>{"★".repeat(Number(item.strong || 0)) || "-"}</span>
+                      </div>
+                      <div style={styles.productMetaRow}>
+                        <span style={styles.productMetaLabel}>Milk</span>
+                        <span style={styles.productMetaStars}>{"★".repeat(Number(item.milk || 0)) || "-"}</span>
+                      </div>
+                      <div style={styles.productMetaRow}>
+                        <span style={styles.productMetaLabel}>Sweet</span>
+                        <span style={styles.productMetaStars}>{"★".repeat(Number(item.sweet || 0)) || "-"}</span>
+                      </div>
                     </div>
                     <span style={selected ? styles.surveySelectedBadge : styles.surveyBadge}>
                       {selected ? "✓ Selected" : "Select"}
@@ -1578,9 +1587,18 @@ export default function App() {
               <div style={styles.productDescriptionText}>{selectedProduct.description || "No description available."}</div>
 
               <div style={styles.productDetailMetaGrid}>
-                <div>Strong {"★".repeat(Number(selectedProduct.strong || 0)) || "-"}</div>
-                <div>Milk {"★".repeat(Number(selectedProduct.milk || 0)) || "-"}</div>
-                <div>Sweet {"★".repeat(Number(selectedProduct.sweet || 0)) || "-"}</div>
+                <div style={styles.productMetaRow}>
+                  <span style={styles.productMetaLabel}>Strong</span>
+                  <span style={styles.productMetaStars}>{"★".repeat(Number(selectedProduct.strong || 0)) || "-"}</span>
+                </div>
+                <div style={styles.productMetaRow}>
+                  <span style={styles.productMetaLabel}>Milk</span>
+                  <span style={styles.productMetaStars}>{"★".repeat(Number(selectedProduct.milk || 0)) || "-"}</span>
+                </div>
+                <div style={styles.productMetaRow}>
+                  <span style={styles.productMetaLabel}>Sweet</span>
+                  <span style={styles.productMetaStars}>{"★".repeat(Number(selectedProduct.sweet || 0)) || "-"}</span>
+                </div>
               </div>
 
               <div style={styles.productDetailDivider} />
@@ -2412,7 +2430,7 @@ const styles = {
   },
   productMeta: {
     display: "grid",
-    gap: 4,
+    gap: 5,
     width: "100%",
     padding: "9px 10px",
     borderRadius: 16,
@@ -2422,6 +2440,23 @@ const styles = {
     fontWeight: 850,
     color: "#7c5a46",
     textAlign: "left",
+  },
+  productMetaRow: {
+    display: "grid",
+    gridTemplateColumns: "50px 1fr",
+    alignItems: "center",
+    gap: 6,
+    lineHeight: 1.25,
+  },
+  productMetaLabel: {
+    color: "#7c5a46",
+    fontWeight: 900,
+  },
+  productMetaStars: {
+    color: "#6b4a36",
+    fontWeight: 950,
+    letterSpacing: "0.04em",
+    whiteSpace: "nowrap",
   },
   productBadgeStack: {
     position: "absolute",

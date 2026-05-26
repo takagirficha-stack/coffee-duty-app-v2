@@ -297,6 +297,42 @@ function AppMotionStyles() {
         100% { transform: translateY(110vh) rotate(520deg); opacity: 0; }
       }
 
+      @keyframes productGlow {
+        0% { box-shadow: 0 12px 28px rgba(92,54,24,0.08); }
+        50% { box-shadow: 0 18px 42px rgba(124,45,18,0.18); }
+        100% { box-shadow: 0 12px 28px rgba(92,54,24,0.08); }
+      }
+
+      .survey-product-card {
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+      }
+
+      .survey-product-card::before {
+        content: "";
+        position: absolute;
+        inset: -45% -25% auto -25%;
+        height: 110px;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent);
+        transform: rotate(-12deg) translateX(-120%);
+        transition: transform 0.55s ease;
+        pointer-events: none;
+      }
+
+      .survey-product-card:hover {
+        transform: translateY(-5px) scale(1.015);
+        box-shadow: 0 22px 48px rgba(92,54,24,0.16) !important;
+      }
+
+      .survey-product-card:hover::before {
+        transform: rotate(-12deg) translateX(120%);
+      }
+
+      .survey-product-card-selected {
+        animation: productGlow 1.8s ease-in-out infinite;
+      }
+
       .soft-card,
       .info-hover-card,
       .cleaning-hover-row,
@@ -416,38 +452,68 @@ export default function App() {
     {
       id: "regular-blend",
       name: "Regular Blend",
-      image:
+      image: "/products/regular-blend.jpg",
+      fallbackImage:
         "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='360' height='240' viewBox='0 0 360 240'><rect width='360' height='240' rx='28' fill='%23fff7ed'/><circle cx='180' cy='106' r='52' fill='%23f6eadf'/><path d='M132 122h96l-12 54h-72z' fill='%237c2d12'/><path d='M142 84h76l10 38h-96z' fill='%23b45309'/><text x='180' y='210' font-size='24' text-anchor='middle' fill='%237c2d12' font-family='Arial' font-weight='700'>Regular</text></svg>",
+      strong: 3,
+      milk: 0,
+      sweet: 1,
+      badge: "Classic",
     },
     {
       id: "cafe-au-lait",
       name: "Cafe au Lait",
-      image:
+      image: "/products/cafe-au-lait.jpg",
+      fallbackImage:
         "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='360' height='240' viewBox='0 0 360 240'><rect width='360' height='240' rx='28' fill='%23fffaf3'/><circle cx='180' cy='106' r='52' fill='%23ead7c5'/><path d='M132 122h96l-12 54h-72z' fill='%23a16207'/><path d='M142 84h76l10 38h-96z' fill='%23f59e0b'/><text x='180' y='210' font-size='24' text-anchor='middle' fill='%237c2d12' font-family='Arial' font-weight='700'>Cafe au Lait</text></svg>",
+      strong: 2,
+      milk: 4,
+      sweet: 2,
+      badge: "Popular",
     },
     {
       id: "latte-macchiato",
       name: "Latte Macchiato",
-      image:
+      image: "/products/latte-macchiato.jpg",
+      fallbackImage:
         "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='360' height='240' viewBox='0 0 360 240'><rect width='360' height='240' rx='28' fill='%23f8fafc'/><circle cx='180' cy='106' r='52' fill='%23fef3c7'/><path d='M132 122h96l-12 54h-72z' fill='%239a3412'/><path d='M142 84h76l10 38h-96z' fill='%23fed7aa'/><text x='180' y='210' font-size='22' text-anchor='middle' fill='%237c2d12' font-family='Arial' font-weight='700'>Latte</text></svg>",
+      strong: 2,
+      milk: 5,
+      sweet: 3,
+      badge: "Staff Pick",
     },
     {
       id: "cappuccino",
       name: "Cappuccino",
-      image:
+      image: "/products/cappuccino.jpg",
+      fallbackImage:
         "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='360' height='240' viewBox='0 0 360 240'><rect width='360' height='240' rx='28' fill='%23eff6ff'/><circle cx='180' cy='106' r='52' fill='%23dbeafe'/><path d='M132 122h96l-12 54h-72z' fill='%237c2d12'/><path d='M142 84h76l10 38h-96z' fill='%2393c5fd'/><text x='180' y='210' font-size='23' text-anchor='middle' fill='%237c2d12' font-family='Arial' font-weight='700'>Cappuccino</text></svg>",
+      strong: 3,
+      milk: 4,
+      sweet: 2,
+      badge: "Foamy",
     },
     {
       id: "espresso",
       name: "Espresso",
-      image:
+      image: "/products/espresso.jpg",
+      fallbackImage:
         "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='360' height='240' viewBox='0 0 360 240'><rect width='360' height='240' rx='28' fill='%2324160f'/><circle cx='180' cy='106' r='52' fill='%23412a1d'/><path d='M132 122h96l-12 54h-72z' fill='%23f6eadf'/><path d='M142 84h76l10 38h-96z' fill='%237c2d12'/><text x='180' y='210' font-size='24' text-anchor='middle' fill='%23f6eadf' font-family='Arial' font-weight='700'>Espresso</text></svg>",
+      strong: 5,
+      milk: 0,
+      sweet: 0,
+      badge: "Strong",
     },
     {
       id: "chocolate",
       name: "Chocolate",
-      image:
+      image: "/products/chocolate.jpg",
+      fallbackImage:
         "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='360' height='240' viewBox='0 0 360 240'><rect width='360' height='240' rx='28' fill='%23fef2f2'/><circle cx='180' cy='106' r='52' fill='%23fecaca'/><path d='M132 122h96l-12 54h-72z' fill='%237f1d1d'/><path d='M142 84h76l10 38h-96z' fill='%23b91c1c'/><text x='180' y='210' font-size='24' text-anchor='middle' fill='%237c2d12' font-family='Arial' font-weight='700'>Chocolate</text></svg>",
+      strong: 1,
+      milk: 3,
+      sweet: 5,
+      badge: "Sweet",
     },
   ];
 
@@ -1171,6 +1237,7 @@ export default function App() {
                   <button
                     key={item.id}
                     type="button"
+                    className={`survey-product-card ${selected ? "survey-product-card-selected" : ""}`}
                     onClick={() =>
                       setSelectedSurveyItems((prev) =>
                         prev.includes(item.id) ? prev.filter((v) => v !== item.id) : [...prev, item.id]
@@ -1178,10 +1245,25 @@ export default function App() {
                     }
                     style={selected ? styles.surveyProductSelected : styles.surveyProduct}
                   >
-                    <img src={item.image} alt={item.name} style={styles.surveyProductImage} />
+                    {item.badge && <span style={styles.productBadge}>{item.badge}</span>}
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      style={styles.surveyProductImage}
+                      onError={(e) => {
+                        if (item.fallbackImage && e.currentTarget.src !== item.fallbackImage) {
+                          e.currentTarget.src = item.fallbackImage;
+                        }
+                      }}
+                    />
                     <span style={styles.surveyProductName}>{item.name}</span>
+                    <div style={styles.productMeta}>
+                      <div>Strong {"★".repeat(Number(item.strong || 0)) || "-"}</div>
+                      <div>Milk {"★".repeat(Number(item.milk || 0)) || "-"}</div>
+                      <div>Sweet {"★".repeat(Number(item.sweet || 0)) || "-"}</div>
+                    </div>
                     <span style={selected ? styles.surveySelectedBadge : styles.surveyBadge}>
-                      {selected ? "Selected" : "Select"}
+                      {selected ? "✓ Selected" : "Select"}
                     </span>
                   </button>
                 );
@@ -1919,47 +2001,79 @@ const styles = {
     marginBottom: 16,
   },
   surveyProduct: {
-    minHeight: 220,
-    padding: 12,
-    borderRadius: 22,
+    minHeight: 300,
+    padding: 14,
+    borderRadius: 24,
     border: "1px solid rgba(146,64,14,0.12)",
-    background: "#ffffff",
+    background:
+      "linear-gradient(180deg, rgba(255,255,255,0.96), rgba(255,250,243,0.9))",
     color: "#3f2a1f",
     fontSize: 13,
     fontWeight: 900,
     cursor: "pointer",
     display: "grid",
-    gap: 8,
+    gap: 9,
     justifyItems: "center",
     textAlign: "center",
-    boxShadow: "0 10px 24px rgba(92,54,24,0.08)",
+    boxShadow: "0 12px 28px rgba(92,54,24,0.08)",
   },
   surveyProductSelected: {
-    minHeight: 220,
-    padding: 12,
-    borderRadius: 22,
+    minHeight: 300,
+    padding: 14,
+    borderRadius: 24,
     border: "2px solid #7c2d12",
-    background: "#f6eadf",
+    background:
+      "linear-gradient(180deg, rgba(246,234,223,0.96), rgba(255,247,237,0.92))",
     color: "#7c2d12",
     fontSize: 13,
     fontWeight: 950,
     cursor: "pointer",
     display: "grid",
-    gap: 8,
+    gap: 9,
     justifyItems: "center",
     textAlign: "center",
-    boxShadow: "0 14px 30px rgba(124,45,18,0.18)",
+    boxShadow: "0 18px 44px rgba(124,45,18,0.2)",
   },
   surveyProductImage: {
     width: "100%",
-    maxWidth: 170,
+    maxWidth: 190,
+    height: 126,
     borderRadius: 18,
     objectFit: "cover",
     background: "#fff7ed",
+    boxShadow: "inset 0 0 0 1px rgba(146,64,14,0.08)",
   },
   surveyProductName: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: 950,
+    letterSpacing: "-0.02em",
+  },
+  productMeta: {
+    display: "grid",
+    gap: 4,
+    width: "100%",
+    padding: "9px 10px",
+    borderRadius: 16,
+    background: "rgba(255,250,243,0.8)",
+    border: "1px solid rgba(146,64,14,0.08)",
+    fontSize: 11,
+    fontWeight: 850,
+    color: "#7c5a46",
+    textAlign: "left",
+  },
+  productBadge: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    zIndex: 2,
+    padding: "6px 10px",
+    borderRadius: 999,
+    background: "linear-gradient(135deg, #7c2d12, #b45309)",
+    color: "#ffffff",
+    fontSize: 10,
+    fontWeight: 950,
+    letterSpacing: "0.08em",
+    boxShadow: "0 8px 18px rgba(124,45,18,0.22)",
   },
   surveyBadge: {
     padding: "6px 10px",

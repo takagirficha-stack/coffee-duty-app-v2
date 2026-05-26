@@ -1346,21 +1346,46 @@ export default function App() {
                   </button>
                 </div>
 
+                <div style={styles.adminHintBox}>
+                  <div style={styles.adminHintTitle}>Product controls</div>
+                  <div style={styles.adminHintText}>Display controls whether the item appears in the survey. NEW controls the badge shown on product cards.</div>
+                </div>
+
                 <div style={styles.adminProductList}>
                   {adminDraftProducts.map((item, index) => (
-                    <label key={item.id || item.name} style={styles.adminProductRow}>
-                      <input
-                        type="checkbox"
-                        checked={item.isVisible !== false}
-                        onChange={(e) => {
-                          const next = [...adminDraftProducts];
-                          next[index] = { ...next[index], isVisible: e.target.checked };
-                          setAdminDraftProducts(next);
-                        }}
-                      />
+                    <div key={item.id || item.name} style={styles.adminProductRow}>
+                      <label style={styles.adminCheckLabel}>
+                        <input
+                          type="checkbox"
+                          checked={item.isVisible !== false}
+                          onChange={(e) => {
+                            const next = [...adminDraftProducts];
+                            next[index] = { ...next[index], isVisible: e.target.checked };
+                            setAdminDraftProducts(next);
+                          }}
+                        />
+                        <span>Display</span>
+                      </label>
+
+                      <label style={styles.adminCheckLabel}>
+                        <input
+                          type="checkbox"
+                          checked={!!item.isNew}
+                          onChange={(e) => {
+                            const next = [...adminDraftProducts];
+                            next[index] = { ...next[index], isNew: e.target.checked };
+                            setAdminDraftProducts(next);
+                          }}
+                        />
+                        <span>NEW</span>
+                      </label>
+
                       <img src={item.image} alt={item.name} style={styles.adminProductImage} />
-                      <span style={styles.adminProductName}>{item.name}</span>
-                    </label>
+                      <div>
+                        <div style={styles.adminProductName}>{item.name}</div>
+                        <div style={styles.adminProductSub}>{item.category || "Uncategorized"}</div>
+                      </div>
+                    </div>
                   ))}
                 </div>
               </>
@@ -2524,15 +2549,42 @@ const styles = {
     display: "grid",
     gap: 10,
   },
+  adminHintBox: {
+    marginBottom: 14,
+    padding: 12,
+    borderRadius: 16,
+    background: "#fff7ed",
+    border: "1px solid #fed7aa",
+  },
+  adminHintTitle: {
+    fontSize: 12,
+    fontWeight: 950,
+    color: "#9a3412",
+    marginBottom: 4,
+  },
+  adminHintText: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: "#7c5a46",
+    lineHeight: 1.5,
+  },
   adminProductRow: {
     display: "grid",
-    gridTemplateColumns: "28px 56px 1fr",
+    gridTemplateColumns: "92px 72px 56px 1fr",
     gap: 10,
     alignItems: "center",
     padding: 10,
     borderRadius: 16,
     background: "#ffffff",
     border: "1px solid rgba(146,64,14,0.12)",
+  },
+  adminCheckLabel: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    fontSize: 12,
+    fontWeight: 900,
+    color: "#5c3b2a",
   },
   adminProductImage: {
     width: 56,
@@ -2544,6 +2596,12 @@ const styles = {
     fontSize: 13,
     fontWeight: 900,
     color: "#3f2a1f",
+  },
+  adminProductSub: {
+    marginTop: 2,
+    fontSize: 11,
+    fontWeight: 750,
+    color: "#7c5a46",
   },
   manualGrid: {
     display: "grid",

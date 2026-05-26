@@ -380,6 +380,9 @@ export default function App() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [showMap, setShowMap] = useState(false);
+  const [showManual, setShowManual] = useState(false);
+  const [showSurvey, setShowSurvey] = useState(false);
+  const [selectedSurveyItems, setSelectedSurveyItems] = useState([]);
   const [selectedMachinePart, setSelectedMachinePart] = useState("tank");
 
   const [message, setMessage] = useState("");
@@ -398,6 +401,15 @@ export default function App() {
   const [changeReason, setChangeReason] = useState("");
 
   const selectedPart = MACHINE_PARTS[selectedMachinePart];
+
+  const surveyItems = [
+    "Regular Blend",
+    "Cafe au Lait",
+    "Latte Macchiato",
+    "Cappuccino",
+    "Espresso",
+    "Chocolate",
+  ];
 
   const todayActiveMembers = useMemo(
     () => getActiveNamesForDate(today, memberVersions, members),
@@ -899,6 +911,9 @@ export default function App() {
           <button type="button" onClick={() => setShowMap(true)} style={{ ...styles.tabButton, ...styles.mapTabButton }}>
             Cleaning Area
           </button>
+          <button type="button" onClick={() => setShowManual(true)} style={{ ...styles.tabButton, ...styles.manualButton }}>
+            Usage Manual
+          </button>
         </div>
 
         <section style={{ ...(isMobile && mobileTab !== "calendar" ? { display: "none" } : {}), ...styles.calendarPanel }}>
@@ -963,6 +978,45 @@ export default function App() {
             </div>
           </div>
         </section>
+
+        <section style={styles.surveySection}>
+          <div style={styles.surveyTopRow}>
+            <div>
+              <div style={styles.sectionKicker}>Next Month Request</div>
+              <h2 style={styles.sectionTitle}>Capsule Purchase Survey</h2>
+              <div style={styles.surveyLead}>Vote for the items you would like to have next month.</div>
+            </div>
+            <button type="button" onClick={() => setShowSurvey((v) => !v)} style={styles.surveyToggleButton}>
+              {showSurvey ? "Close Survey" : "Open Survey"}
+            </button>
+          </div>
+
+          {showSurvey && (
+            <div style={styles.surveyCardGrid}>
+              {surveyItems.map((item) => {
+                const selected = selectedSurveyItems.includes(item);
+                return (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() =>
+                      setSelectedSurveyItems((prev) =>
+                        prev.includes(item) ? prev.filter((v) => v !== item) : [...prev, item]
+                      )
+                    }
+                    style={selected ? styles.surveyItemSelected : styles.surveyItem}
+                  >
+                    <span style={styles.surveyItemIcon}>☕</span>
+                    <span>{item}</span>
+                  </button>
+                );
+              })}
+              <button type="button" style={styles.surveySubmitButton}>
+                Submit Request
+              </button>
+            </div>
+          )}
+        </section>
       </div>
 
       {showCheck && (
@@ -1014,50 +1068,34 @@ export default function App() {
 
               <div style={{ ...styles.ruleSection, ...styles.ruleMachine }}>
                 <div style={styles.ruleTitle}>Coffee Machine Cleaning Guide</div>
-                <div style={styles.machineOverviewCard}>
-                  <div style={styles.machineOverviewHeader}>
-                    <div>
-                      <div style={styles.machineOverviewTitle}>Parts Guide</div>
-                      <div style={styles.machineOverviewSubText}>Select a part to review cleaning steps.</div>
-                    </div>
-                    <div style={styles.machineOverviewBadge}>Manual</div>
-                  </div>
-                  <img src={MACHINE_OVERVIEW_URL} alt="Coffee machine parts overview" style={styles.machineOverviewImage} />
-                </div>
-
-                <div style={{ ...styles.partTabs, ...(isMobile ? styles.partTabsMobile : {}) }}>
-                  {Object.entries(MACHINE_PARTS).map(([key, part]) => (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => setSelectedMachinePart(key)}
-                      style={selectedMachinePart === key ? styles.partTabActive : styles.partTab}
-                    >
-                      {part.label}
-                    </button>
-                  ))}
-                </div>
-
-                <div style={{ ...styles.partDetailCard, ...(isMobile ? styles.partDetailCardMobile : {}) }}>
-                  <div style={{ ...styles.partImageBox, ...(isMobile ? styles.partImageBoxMobile : {}) }}>
-                    <img src={selectedPart.image} alt={selectedPart.label} style={styles.partImage} />
-                  </div>
-                  <div style={styles.partDetailTextBox}>
-                    <div style={styles.partBadge}>{selectedPart.badge}</div>
-                    <div style={styles.partTitle}>{selectedPart.label}</div>
-                    <ol style={styles.partSteps}>
-                      {selectedPart.steps.map((step, index) => <li key={index}>{step}</li>)}
-                    </ol>
-                  </div>
+                <div style={styles.manualGrid}>
+              <div style={styles.manualCard}>
+                <div style={styles.manualStep}>1</div>
+                <div>
+                  <div style={styles.manualTitle}>Check today's duty</div>
+                  <div style={styles.manualText}>Open the app and confirm the person shown in Today's Coffee Cleaning Duty.</div>
                 </div>
               </div>
-
-              <div style={{ ...styles.ruleSection, ...styles.ruleFloor }}>
-                <div style={styles.ruleTitle}>Floor Cleaning</div>
-                <ul style={styles.ruleBullets}>
-                  <li>Vacuum the assigned cleaning area.</li>
-                  <li>Clean visible dust, trash, or stains if found.</li>
-                </ul>
+              <div style={styles.manualCard}>
+                <div style={styles.manualStep}>2</div>
+                <div>
+                  <div style={styles.manualTitle}>Clean after finishing</div>
+                  <div style={styles.manualText}>After the coffee cleaning work is finished, press Complete Coffee Cleaning.</div>
+                </div>
+              </div>
+              <div style={styles.manualCard}>
+                <div style={styles.manualStep}>3</div>
+                <div>
+                  <div style={styles.manualTitle}>Change assignee if needed</div>
+                  <div style={styles.manualText}>Click a future calendar date on PC, or long-press on mobile, then enter the changer name and reason.</div>
+                </div>
+              </div>
+              <div style={styles.manualCard}>
+                <div style={styles.manualStep}>4</div>
+                <div>
+                  <div style={styles.manualTitle}>Check floor cleaning</div>
+                  <div style={styles.manualText}>For monthly area cleaning, confirm the area and press Complete when the work is done.</div>
+                </div>
               </div>
             </div>
           </div>
@@ -1111,7 +1149,7 @@ export default function App() {
             </button>
 
             <label style={styles.formLabel}>Changed By</label>
-            <input value={changeName} onChange={(e) => setChangeName(e.target.value)} style={styles.input} placeholder="e.g. Takagi" />
+            <input value={changeName} onChange={(e) => setChangeName(e.target.value)} style={styles.input} placeholder="e.g. Your name" />
 
             <label style={styles.formLabel}>New Assignee</label>
             <select value={changeMember} onChange={(e) => setChangeMember(e.target.value)} style={styles.input}>
@@ -1576,6 +1614,129 @@ const styles = {
     border: "1px solid #bfdbfe",
     background: "#eff6ff",
     color: "#1d4ed8",
+  },
+  manualButton: {
+    border: "1px solid #dfc2a8",
+    background: "#f6eadf",
+    color: "#7c2d12",
+  },
+  surveySection: {
+    marginTop: 22,
+    padding: "clamp(16px, 2vw, 24px)",
+    borderRadius: 28,
+    background: "rgba(255,255,255,0.72)",
+    border: "1px solid rgba(255,255,255,0.75)",
+    boxShadow: "0 20px 48px rgba(92,54,24,0.1)",
+  },
+  surveyTopRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 14,
+    flexWrap: "wrap",
+  },
+  surveyLead: {
+    marginTop: 5,
+    fontSize: 13,
+    fontWeight: 700,
+    color: "#7c5a46",
+  },
+  surveyToggleButton: {
+    padding: "11px 18px",
+    borderRadius: 999,
+    border: "1px solid #dfc2a8",
+    background: "#f6eadf",
+    color: "#7c2d12",
+    fontSize: 12,
+    fontWeight: 950,
+    cursor: "pointer",
+  },
+  surveyCardGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+    gap: 10,
+    marginTop: 16,
+  },
+  surveyItem: {
+    minHeight: 58,
+    padding: "12px 14px",
+    borderRadius: 18,
+    border: "1px solid rgba(146,64,14,0.12)",
+    background: "#fffaf3",
+    color: "#3f2a1f",
+    fontSize: 13,
+    fontWeight: 900,
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    justifyContent: "center",
+  },
+  surveyItemSelected: {
+    minHeight: 58,
+    padding: "12px 14px",
+    borderRadius: 18,
+    border: "1px solid #7c2d12",
+    background: "#f6eadf",
+    color: "#7c2d12",
+    fontSize: 13,
+    fontWeight: 950,
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    justifyContent: "center",
+  },
+  surveyItemIcon: {
+    fontSize: 16,
+  },
+  surveySubmitButton: {
+    minHeight: 58,
+    padding: "12px 14px",
+    borderRadius: 18,
+    border: "none",
+    background: "linear-gradient(135deg, #7c2d12, #b45309)",
+    color: "#ffffff",
+    fontSize: 13,
+    fontWeight: 950,
+    cursor: "pointer",
+  },
+  manualGrid: {
+    display: "grid",
+    gap: 12,
+  },
+  manualCard: {
+    display: "grid",
+    gridTemplateColumns: "42px 1fr",
+    gap: 12,
+    alignItems: "start",
+    padding: 14,
+    borderRadius: 18,
+    background: "#fffaf3",
+    border: "1px solid rgba(146,64,14,0.12)",
+  },
+  manualStep: {
+    width: 34,
+    height: 34,
+    borderRadius: "50%",
+    background: "#7c2d12",
+    color: "#ffffff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontWeight: 950,
+  },
+  manualTitle: {
+    fontSize: 15,
+    fontWeight: 950,
+    color: "#24160f",
+  },
+  manualText: {
+    marginTop: 4,
+    fontSize: 13,
+    fontWeight: 700,
+    color: "#7c5a46",
+    lineHeight: 1.55,
   },
   mobileTabs: {
     display: "grid",

@@ -1148,9 +1148,9 @@ export default function App() {
             {!isOnline && <div style={styles.offlineBadge}>Offline</div>}
             <div style={styles.versionBadge}>{appVersion}</div>
             {canInstall && (
-              <button type="button" onClick={installApp} style={styles.installButton}>Install App</button>
+              <button type="button" onClick={installApp} style={styles.installButton}>⬇️ Install App</button>
             )}
-            <button type="button" onClick={() => loadData(true)} style={styles.refreshButton}>Refresh</button>
+            <button type="button" onClick={() => loadData(true)} style={styles.refreshButton}>🔄 Refresh</button>
           </div>
         </header>
 
@@ -1198,7 +1198,7 @@ export default function App() {
               disabled={!todayMember || todayDone}
               style={{ ...styles.primaryButton, ...(!todayMember || todayDone ? styles.disabledButton : {}) }}
             >
-              {todayDone ? "Completed" : "Complete Coffee Cleaning"}
+              {todayDone ? "✅ Completed" : "✅ Complete Coffee Cleaning"}
             </button>
 
             {message && (
@@ -1245,7 +1245,7 @@ export default function App() {
                       disabled={!canComplete}
                       style={{ ...styles.cleaningCompleteButton, ...(!canComplete ? styles.cleaningCompleteButtonDisabled : {}) }}
                     >
-                      {done ? "Completed" : "Complete"}
+                      {done ? "✅ Completed" : "✅ Complete"}
                     </button>
                   </div>
                 );
@@ -1256,13 +1256,13 @@ export default function App() {
 
         <div style={styles.commandArea}>
           <button type="button" onClick={() => setShowRules(true)} style={{ ...styles.tabButton, ...styles.ruleButton }}>
-            Cleaning Rules
+            📋 Cleaning Rules
           </button>
           <button type="button" onClick={() => setShowMap(true)} style={{ ...styles.tabButton, ...styles.mapTabButton }}>
-            Cleaning Area
+            🗺️ Cleaning Area
           </button>
           <button type="button" onClick={() => setShowManual(true)} style={{ ...styles.tabButton, ...styles.manualButton }}>
-            Usage Manual
+            📖 Usage Manual
           </button>
         </div>
 
@@ -1343,11 +1343,11 @@ export default function App() {
             </div>
             <div style={styles.surveyButtonGroup}>
               <button type="button" onClick={() => setShowAdmin(true)} style={styles.adminButton}>
-                Admin
+                ⚙️ Admin
               </button>
               <div style={styles.deliveryMonthBadge}>{surveyMonthLabel}</div>
               <button type="button" onClick={() => setShowSurvey((v) => !v)} style={styles.surveyToggleButton}>
-                {showSurvey ? "Close Survey" : "Open Survey"}
+                {showSurvey ? "✕ Close Survey" : "☕ Open Survey"}
               </button>
             </div>
           </div>
@@ -1363,7 +1363,7 @@ export default function App() {
                 <h2 style={styles.modalTitle}>Admin Mode</h2>
                 <div style={styles.modalSubText}>Adjust which products appear in the survey.</div>
               </div>
-              <button type="button" onClick={() => setShowAdmin(false)} style={styles.cancelButton}>Close</button>
+              <button type="button" onClick={() => setShowAdmin(false)} style={styles.cancelButton}>✕ Close</button>
             </div>
 
             {!adminUnlocked ? (
@@ -1376,16 +1376,16 @@ export default function App() {
                   placeholder="Enter admin PIN"
                   type="password"
                 />
-                <button type="button" onClick={unlockAdmin} style={styles.saveButton}>Unlock</button>
+                <button type="button" onClick={unlockAdmin} style={styles.saveButton}>🔓 Unlock</button>
               </div>
             ) : (
               <>
                 <div style={styles.adminActions}>
                   <button type="button" onClick={refreshNestleProducts} style={styles.adminButtonLarge}>
-                    Refresh from Nestle
+                    🔄 Refresh from Nestle
                   </button>
                   <button type="button" onClick={saveAdminProducts} style={styles.saveButton}>
-                    Save Display Settings
+                    💾 Save Display Settings
                   </button>
                 </div>
 
@@ -1514,7 +1514,7 @@ export default function App() {
                 <h2 style={styles.modalTitle}>Capsule Purchase Survey</h2>
                 <div style={styles.modalSubText}>Select items for {surveyMonthLabel}. Request period: {surveyPeriodLabel}.</div>
               </div>
-              <button type="button" onClick={() => setShowSurvey(false)} style={styles.cancelButton}>Close</button>
+              <button type="button" onClick={() => setShowSurvey(false)} style={styles.cancelButton}>✕ Close</button>
             </div>
 
             {recommendedProduct && (
@@ -1530,7 +1530,7 @@ export default function App() {
                   style={styles.recommendedButton}
                   onClick={() => setSelectedProduct(recommendedProduct)}
                 >
-                  View details
+                  🔍 View details
                 </button>
               </div>
             )}
@@ -1586,7 +1586,7 @@ export default function App() {
                         setSelectedProduct(item);
                       }}
                     >
-                      View details
+                      🔍 View details
                     </span>
                     <div style={styles.productMeta}>
                       <div style={styles.productMetaRow}>
@@ -1611,7 +1611,7 @@ export default function App() {
             </div>
 
             <button type="button" onClick={submitSurvey} style={styles.surveySubmitButton}>
-              Submit Request for {surveyMonthLabel}
+              🛒 Submit Request for {surveyMonthLabel}
             </button>
           </div>
         </div>
@@ -1665,7 +1665,7 @@ export default function App() {
                   setSelectedProduct(null);
                 }}
               >
-                Add to request
+                🛒 Add to request
               </button>
             </div>
           </div>
@@ -1678,40 +1678,55 @@ export default function App() {
             <div style={styles.modalHeader}>
               <div>
                 <h2 style={styles.modalTitle}>Usage Manual</h2>
-                <div style={styles.modalSubText}>How to use this Coffee Duty app.</div>
+                <div style={styles.modalSubText}>A quick guide for using Coffee Duty smoothly.</div>
               </div>
-              <button type="button" onClick={() => setShowManual(false)} style={styles.cancelButton}>Close</button>
+              <button type="button" onClick={() => setShowManual(false)} style={styles.cancelButton}>✕ Close</button>
             </div>
 
-            <div style={styles.manualGrid}>
-              <div style={styles.manualCard}>
-                <div style={styles.manualStep}>1</div>
-                <div>
-                  <div style={styles.manualTitle}>Check today's duty</div>
-                  <div style={styles.manualText}>Open the app and confirm the person shown in Today's Coffee Cleaning Duty.</div>
-                </div>
+            <div style={styles.manualHeroCard}>
+              <div style={styles.manualHeroIcon}>☕</div>
+              <div>
+                <div style={styles.manualHeroTitle}>Daily flow</div>
+                <div style={styles.manualHeroText}>Check your duty, complete the work, and use the survey for next month’s capsules.</div>
               </div>
-              <div style={styles.manualCard}>
-                <div style={styles.manualStep}>2</div>
-                <div>
-                  <div style={styles.manualTitle}>Complete after work</div>
-                  <div style={styles.manualText}>After the coffee cleaning work is finished, press Complete Coffee Cleaning.</div>
-                </div>
+            </div>
+
+            <div style={styles.manualGridLarge}>
+              <div style={styles.manualFeatureCard}>
+                <div style={styles.manualFeatureIcon}>👤</div>
+                <div style={styles.manualTitle}>1. Check today's duty</div>
+                <div style={styles.manualText}>Open the app and confirm the name shown in Today's Coffee Cleaning Duty.</div>
               </div>
-              <div style={styles.manualCard}>
-                <div style={styles.manualStep}>3</div>
-                <div>
-                  <div style={styles.manualTitle}>Change assignee if needed</div>
-                  <div style={styles.manualText}>Click a future calendar date on PC, or long-press on mobile, then enter your name and reason.</div>
-                </div>
+
+              <div style={styles.manualFeatureCard}>
+                <div style={styles.manualFeatureIcon}>✅</div>
+                <div style={styles.manualTitle}>2. Complete after cleaning</div>
+                <div style={styles.manualText}>After coffee cleaning is finished, press Complete Coffee Cleaning. The calendar will be marked as completed.</div>
               </div>
-              <div style={styles.manualCard}>
-                <div style={styles.manualStep}>4</div>
-                <div>
-                  <div style={styles.manualTitle}>Check floor cleaning</div>
-                  <div style={styles.manualText}>For monthly area cleaning, confirm the area and press Complete when the work is done.</div>
-                </div>
+
+              <div style={styles.manualFeatureCard}>
+                <div style={styles.manualFeatureIcon}>🔄</div>
+                <div style={styles.manualTitle}>3. Change assignee</div>
+                <div style={styles.manualText}>Click a future calendar date on PC, or long-press on mobile, then enter your name and reason.</div>
               </div>
+
+              <div style={styles.manualFeatureCard}>
+                <div style={styles.manualFeatureIcon}>🧹</div>
+                <div style={styles.manualTitle}>4. Floor cleaning</div>
+                <div style={styles.manualText}>Check Monthly Area Cleaning Duty, clean the assigned area, and press Complete when finished.</div>
+              </div>
+
+              <div style={styles.manualFeatureCard}>
+                <div style={styles.manualFeatureIcon}>🛒</div>
+                <div style={styles.manualTitle}>5. Capsule survey</div>
+                <div style={styles.manualText}>Open Capsule Purchase Survey, choose desired items, and submit your request. The target delivery month is shown beside the button.</div>
+              </div>
+
+                          </div>
+
+            <div style={styles.manualTipBox}>
+              <div style={styles.manualTipTitle}>Small tips</div>
+              <div style={styles.manualTipText}>Use Refresh when data looks old. If the app is opened on mobile, it can also be installed like an app when the browser supports it.</div>
             </div>
           </div>
         </div>
@@ -1742,7 +1757,7 @@ export default function App() {
                 <h2 style={styles.modalTitle}>Cleaning Rules</h2>
                 <div style={styles.modalSubText}>Daily operating procedure for keeping the coffee area clean.</div>
               </div>
-              <button type="button" onClick={() => setShowRules(false)} style={styles.cancelButton}>Close</button>
+              <button type="button" onClick={() => setShowRules(false)} style={styles.cancelButton}>✕ Close</button>
             </div>
 
             <div style={styles.ruleList}>
@@ -1765,49 +1780,54 @@ export default function App() {
               </div>
 
               <div style={{ ...styles.ruleSection, ...styles.ruleMachine }}>
-                <div style={styles.ruleTitle}>Usage Manual</div>
-
-                <div style={styles.manualGrid}>
-                  <div style={styles.manualCard}>
-                    <div style={styles.manualStep}>1</div>
+                <div style={styles.ruleTitle}>Coffee Machine Cleaning Guide</div>
+                <div style={styles.machineOverviewCard}>
+                  <div style={styles.machineOverviewHeader}>
                     <div>
-                      <div style={styles.manualTitle}>Check today's duty</div>
-                      <div style={styles.manualText}>
-                        Open the app and confirm the person shown in Today's Coffee Cleaning Duty.
-                      </div>
+                      <div style={styles.machineOverviewTitle}>Parts Guide</div>
+                      <div style={styles.machineOverviewSubText}>Select a part to review cleaning steps.</div>
                     </div>
+                    <div style={styles.machineOverviewBadge}>Daily Care</div>
                   </div>
+                  <img src={MACHINE_OVERVIEW_URL} alt="Coffee machine parts overview" style={styles.machineOverviewImage} />
+                </div>
 
-                  <div style={styles.manualCard}>
-                    <div style={styles.manualStep}>2</div>
-                    <div>
-                      <div style={styles.manualTitle}>Clean after finishing</div>
-                      <div style={styles.manualText}>
-                        After the coffee cleaning work is finished, press Complete Coffee Cleaning.
-                      </div>
-                    </div>
+                <div style={{ ...styles.partTabs, ...(isMobile ? styles.partTabsMobile : {}) }}>
+                  {Object.entries(MACHINE_PARTS).map(([key, part]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setSelectedMachinePart(key)}
+                      style={selectedMachinePart === key ? styles.partTabActive : styles.partTab}
+                    >
+                      {part.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div style={{ ...styles.partDetailCard, ...(isMobile ? styles.partDetailCardMobile : {}) }}>
+                  <div style={{ ...styles.partImageBox, ...(isMobile ? styles.partImageBoxMobile : {}) }}>
+                    <img src={selectedPart.image} alt={selectedPart.label} style={styles.partImage} />
                   </div>
-
-                  <div style={styles.manualCard}>
-                    <div style={styles.manualStep}>3</div>
-                    <div>
-                      <div style={styles.manualTitle}>Change assignee if needed</div>
-                      <div style={styles.manualText}>
-                        Click a future calendar date on PC, or long-press on mobile, then enter the changer name and reason.
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={styles.manualCard}>
-                    <div style={styles.manualStep}>4</div>
-                    <div>
-                      <div style={styles.manualTitle}>Check floor cleaning</div>
-                      <div style={styles.manualText}>
-                        For monthly area cleaning, confirm the area and press Complete when the work is done.
-                      </div>
-                    </div>
+                  <div style={styles.partDetailTextBox}>
+                    <div style={styles.partBadge}>{selectedPart.badge}</div>
+                    <div style={styles.partTitle}>{selectedPart.label}</div>
+                    <ol style={styles.partSteps}>
+                      {selectedPart.steps.map((step, index) => (
+                        <li key={index}>{step}</li>
+                      ))}
+                    </ol>
                   </div>
                 </div>
+              </div>
+
+              <div style={{ ...styles.ruleSection, ...styles.ruleFloor }}>
+                <div style={styles.ruleTitle}>Floor Cleaning</div>
+                <ul style={styles.ruleBullets}>
+                  <li>Check the assigned Area C / Area D from Monthly Area Cleaning Duty.</li>
+                  <li>Clean visible dust, trash, or stains in the assigned space.</li>
+                  <li>Press Complete after the floor cleaning work is finished.</li>
+                </ul>
               </div>
             </div>
           </div>
@@ -1822,7 +1842,7 @@ export default function App() {
                 <h2 style={styles.modalTitle}>Cleaning Area</h2>
                 <div style={styles.modalSubText}>Check the assigned area and clean the corresponding space.</div>
               </div>
-              <button type="button" onClick={() => setShowMap(false)} style={styles.cancelButton}>Close</button>
+              <button type="button" onClick={() => setShowMap(false)} style={styles.cancelButton}>✕ Close</button>
             </div>
             <div style={styles.mapViewer}>
               <div style={styles.mapToolbar}>
@@ -1857,7 +1877,7 @@ export default function App() {
               onClick={() => window.open("https://slack.com/app_redirect?channel=general", "_blank")}
               style={styles.slackOpenButton}
             >
-              Open Slack
+              💬 Open Slack
             </button>
 
             <label style={styles.formLabel}>Changed By</label>
@@ -1874,8 +1894,8 @@ export default function App() {
             <input value={changeReason} onChange={(e) => setChangeReason(e.target.value)} style={styles.input} placeholder="e.g. Substitute duty" />
 
             <div style={styles.modalActions}>
-              <button type="button" onClick={() => setSelectedDate(null)} style={styles.cancelButton}>Cancel</button>
-              <button type="button" onClick={saveAssignmentChange} style={styles.saveButton}>Save</button>
+              <button type="button" onClick={() => setSelectedDate(null)} style={styles.cancelButton}>✕ Cancel</button>
+              <button type="button" onClick={saveAssignmentChange} style={styles.saveButton}>💾 Save</button>
             </div>
           </div>
         </div>
@@ -2910,6 +2930,86 @@ const styles = {
   manualGrid: {
     display: "grid",
     gap: 12,
+  },
+  manualHeroCard: {
+    display: "grid",
+    gridTemplateColumns: "64px 1fr",
+    gap: 14,
+    alignItems: "center",
+    padding: 18,
+    borderRadius: 24,
+    background: "linear-gradient(135deg, #fff7ed, #eff6ff)",
+    border: "1px solid rgba(146,64,14,0.12)",
+    boxShadow: "0 14px 34px rgba(92,54,24,0.10)",
+    marginBottom: 16,
+  },
+  manualHeroIcon: {
+    width: 54,
+    height: 54,
+    borderRadius: 18,
+    background: "#7c2d12",
+    color: "#ffffff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 28,
+    boxShadow: "0 12px 26px rgba(124,45,18,0.24)",
+  },
+  manualHeroTitle: {
+    fontSize: 20,
+    fontWeight: 950,
+    color: "#24160f",
+    letterSpacing: "-0.03em",
+  },
+  manualHeroText: {
+    marginTop: 4,
+    fontSize: 13,
+    fontWeight: 750,
+    color: "#7c5a46",
+    lineHeight: 1.55,
+  },
+  manualGridLarge: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+    gap: 12,
+  },
+  manualFeatureCard: {
+    padding: 16,
+    borderRadius: 20,
+    background: "rgba(255,255,255,0.78)",
+    border: "1px solid rgba(146,64,14,0.12)",
+    boxShadow: "0 10px 24px rgba(92,54,24,0.08)",
+  },
+  manualFeatureIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    background: "#fff7ed",
+    border: "1px solid #fed7aa",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 20,
+    marginBottom: 10,
+  },
+  manualTipBox: {
+    marginTop: 14,
+    padding: 14,
+    borderRadius: 18,
+    background: "#f6eadf",
+    border: "1px solid #dfc2a8",
+  },
+  manualTipTitle: {
+    fontSize: 13,
+    fontWeight: 950,
+    color: "#7c2d12",
+    marginBottom: 4,
+  },
+  manualTipText: {
+    fontSize: 13,
+    fontWeight: 750,
+    color: "#7c5a46",
+    lineHeight: 1.55,
   },
   manualCard: {
     display: "grid",

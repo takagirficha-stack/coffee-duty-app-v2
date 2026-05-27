@@ -9,7 +9,7 @@ const PART_TANK_URL = "/part-tank.png";
 const PART_HOLDER_URL = "/part-holder.png";
 const PART_TRAY_URL = "/part-tray.png";
 
-const CACHE_KEY = "coffeeDutyAppCacheV5";
+const CACHE_KEY = "coffeeDutyAppCacheV20";
 const SLACK_WEBHOOK_URL = "";
 const WEATHER_URL =
   "https://api.open-meteo.com/v1/forecast?latitude=35.7295&longitude=139.7190&current=temperature_2m,weather_code&timezone=Asia%2FTokyo";
@@ -303,6 +303,34 @@ function AppMotionStyles() {
         100% { box-shadow: 0 12px 28px rgba(92,54,24,0.08); }
       }
 
+      @keyframes smoothFadeUp {
+        0% { transform: translateY(10px); opacity: 0; }
+        100% { transform: translateY(0); opacity: 1; }
+      }
+
+      @keyframes coffeeSteam {
+        0% { transform: translateY(7px) scale(0.96); opacity: 0; }
+        45% { opacity: 0.7; }
+        100% { transform: translateY(-8px) scale(1.08); opacity: 0; }
+      }
+
+      @keyframes softFloat {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-4px); }
+      }
+
+      .smooth-enter {
+        animation: smoothFadeUp 0.34s ease both;
+      }
+
+      .coffee-steam {
+        animation: coffeeSteam 2.6s ease-in-out infinite;
+      }
+
+      .soft-float {
+        animation: softFloat 3.2s ease-in-out infinite;
+      }
+
       .survey-product-card {
         position: relative;
         overflow: hidden;
@@ -327,6 +355,15 @@ function AppMotionStyles() {
 
       .survey-product-card:hover::before {
         transform: rotate(-12deg) translateX(120%);
+      }
+
+      .survey-product-card img {
+        transition: transform 0.24s ease, filter 0.24s ease;
+      }
+
+      .survey-product-card:hover img {
+        transform: scale(1.07) translateY(-3px);
+        filter: drop-shadow(0 16px 20px rgba(92,54,24,0.18));
       }
 
       .survey-product-card-selected {
@@ -375,6 +412,32 @@ function AppMotionStyles() {
         box-shadow: 0 8px 18px rgba(124,45,18,0.22) !important;
       }
 
+      .rounded-scroll {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(124,45,18,0.38) transparent;
+        scrollbar-gutter: stable;
+      }
+
+      .rounded-scroll::-webkit-scrollbar {
+        width: 10px;
+      }
+
+      .rounded-scroll::-webkit-scrollbar-track {
+        background: transparent;
+        margin: 18px 0;
+        border-radius: 999px;
+      }
+
+      .rounded-scroll::-webkit-scrollbar-thumb {
+        background: rgba(124,45,18,0.32);
+        border-radius: 999px;
+        border: 3px solid #fffaf3;
+      }
+
+      .rounded-scroll::-webkit-scrollbar-thumb:hover {
+        background: rgba(124,45,18,0.52);
+      }
+
       @media (max-width: 720px) {
         body { overflow-x: hidden; }
         .soft-card { border-radius: 22px !important; }
@@ -408,7 +471,7 @@ export default function App() {
   const [apiNextDuty, setApiNextDuty] = useState(null);
   const [apiHasChange, setApiHasChange] = useState(false);
   const [apiRecord, setApiRecord] = useState(null);
-  const [appVersion, setAppVersion] = useState("v2.0.0");
+  const [appVersion, setAppVersion] = useState("v2.0");
 
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
@@ -426,6 +489,13 @@ export default function App() {
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [adminPin, setAdminPin] = useState("");
   const [adminDraftProducts, setAdminDraftProducts] = useState([]);
+  const [surveySummary, setSurveySummary] = useState([]);
+
+  useEffect(() => {
+    if (!products.length) {
+      setAdminDraftProducts(baseSurveyProducts);
+    }
+  }, [products, baseSurveyProducts]);
   const [selectedMachinePart, setSelectedMachinePart] = useState("tank");
 
   const [message, setMessage] = useState("");
@@ -672,6 +742,14 @@ export default function App() {
   const surveyCategories = ["All", "Coffee", "Latte", "Iced", "Espresso", "Tea", "Sweet", "Other"];
   const adminCategoryOptions = ["Coffee", "Latte", "Iced", "Espresso", "Tea", "Sweet", "Other"];
 
+  const baseSurveyProducts = useMemo(() => {
+    return surveyItems.map((item, index) => ({
+      ...item,
+      isVisible: item.isVisible !== false,
+      displayOrder: item.displayOrder ?? index,
+    }));
+  }, []);
+
   const enrichedSurveyItems = useMemo(() => {
     const source = products.length
       ? products.map((product) => {
@@ -686,7 +764,7 @@ export default function App() {
             badge: product.badge || fallback.badge || "",
           };
         })
-      : surveyItems;
+      : baseSurveyProducts;
 
     return source.filter((item) => item.isVisible !== false);
   }, [products]);
@@ -703,6 +781,19 @@ export default function App() {
       null
     );
   }, [enrichedSurveyItems]);
+
+  const adminSurveyRanking = useMemo(() => {
+    if (!surveySummary.length) return [];
+    return surveySummary
+      .filter((item) => String(item.month || "").trim() === surveyMonth)
+      .map((item) => ({
+        itemId: item.itemId || item.id || "",
+        itemName: item.itemName || item.name || item.itemId || "Unknown",
+        count: Number(item.count || 0),
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  }, [surveySummary, surveyMonth]);
 
   const alreadyVotedForThisMonth = !!votedName;
 
@@ -748,8 +839,9 @@ export default function App() {
     setAssignmentChanges(data.assignmentChanges || []);
     setCleaningMembers(data.cleaningMembers || []);
     setProducts(data.products || []);
-    setAdminDraftProducts(data.products || []);
-    setAppVersion(data.appVersion || "v2.0.0");
+    setSurveySummary(data.surveySummary || data.summary || []);
+    setAdminDraftProducts((data.products && data.products.length ? data.products : baseSurveyProducts));
+    setAppVersion(data.appVersion || "v2.0");
 
     setApiTodayMember(data.todayMember || "");
     setApiBaseMember(data.baseMember || "");
@@ -1003,7 +1095,7 @@ export default function App() {
     if (adminPin === "admin") {
       setAdminUnlocked(true);
       setAdminPin("");
-      setAdminDraftProducts(products.length ? products : surveyItems.map((item) => ({ ...item, isVisible: true })));
+      setAdminDraftProducts(products.length ? products : baseSurveyProducts);
     } else {
       setMessage("Invalid admin PIN.");
     }
@@ -1155,7 +1247,7 @@ export default function App() {
         </header>
 
         <div style={{ ...styles.topLayout, ...(isMobile ? styles.topLayoutMobile : {}) }}>
-          <main className="soft-card" style={styles.heroCard}>
+          <main className="soft-card smooth-enter" style={styles.heroCard}>
             <div style={styles.heroTopRow}>
               <div>
                 <div style={styles.todayHeroKicker}>☕ TODAY DUTY</div>
@@ -1209,7 +1301,7 @@ export default function App() {
             )}
           </main>
 
-          <section style={styles.cleaningSection}>
+          <section className="smooth-enter" style={styles.cleaningSection}>
             <div style={styles.sectionHeader}>
               <div>
                 <div style={styles.sectionKicker}>Floor Cleaning</div>
@@ -1266,7 +1358,7 @@ export default function App() {
           </button>
         </div>
 
-        <section style={styles.calendarPanel}>
+        <section className="smooth-enter" style={styles.calendarPanel}>
           <div style={styles.calendarHeader}>
             <MonthButton onClick={movePrevMonth}>‹</MonthButton>
             <div style={styles.monthTitle}>{MONTH_NAMES[month - 1]} {year}</div>
@@ -1329,7 +1421,7 @@ export default function App() {
           </div>
         </section>
 
-        <section style={styles.surveySection}>
+        <section className="smooth-enter" style={styles.surveySection}>
           <div style={styles.surveyTopRow}>
             <div>
               <div style={styles.sectionKicker}>Next Month Request</div>
@@ -1357,7 +1449,7 @@ export default function App() {
 
       {showAdmin && (
         <div style={styles.modalOverlay} onClick={() => setShowAdmin(false)}>
-          <div style={styles.surveyModalCard} onClick={(e) => e.stopPropagation()}>
+          <div className="rounded-scroll" style={styles.surveyModalCard} onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalHeader}>
               <div>
                 <h2 style={styles.modalTitle}>Admin Mode</h2>
@@ -1389,9 +1481,32 @@ export default function App() {
                   </button>
                 </div>
 
+                <div style={styles.adminRankingBox}>
+                  <div style={styles.adminRankingHeader}>
+                    <div>
+                      <div style={styles.adminHintTitle}>Survey ranking</div>
+                      <div style={styles.adminHintText}>Admin-only summary for {surveyMonthLabel}.</div>
+                    </div>
+                    <div style={styles.adminRankingBadge}>Top {adminSurveyRanking.length || 0}</div>
+                  </div>
+                  {adminSurveyRanking.length ? (
+                    <div style={styles.adminRankingList}>
+                      {adminSurveyRanking.map((item, index) => (
+                        <div key={item.itemId || item.itemName} style={styles.adminRankingRow}>
+                          <div style={styles.adminRankingRank}>{index + 1}</div>
+                          <div style={styles.adminRankingName}>{item.itemName}</div>
+                          <div style={styles.adminRankingCount}>{item.count} votes</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={styles.adminRankingEmpty}>No survey responses yet.</div>
+                  )}
+                </div>
+
                 <div style={styles.adminHintBox}>
                   <div style={styles.adminHintTitle}>Product controls</div>
-                  <div style={styles.adminHintText}>Display controls whether the item appears in the survey. NEW controls the badge shown on product cards. Category and taste values control filtering and product card details.</div>
+                  <div style={styles.adminHintText}>The admin list automatically uses the current Capsule Purchase Survey product data. Only changed values need to be edited here.</div>
                 </div>
 
                 <div style={styles.adminProductList}>
@@ -1508,7 +1623,7 @@ export default function App() {
 
       {showSurvey && (
         <div style={styles.modalOverlay} onClick={() => setShowSurvey(false)}>
-          <div style={styles.surveyModalCard} onClick={(e) => e.stopPropagation()}>
+          <div className="rounded-scroll" style={styles.surveyModalCard} onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalHeader}>
               <div>
                 <h2 style={styles.modalTitle}>Capsule Purchase Survey</h2>
@@ -1518,7 +1633,7 @@ export default function App() {
             </div>
 
             {recommendedProduct && (
-              <div style={styles.recommendedBox}>
+              <div className="soft-float" style={styles.recommendedBox}>
                 <div style={styles.recommendedTextBlock}>
                   <div style={styles.recommendedKicker}>Recommended this month</div>
                   <div style={styles.recommendedTitle}>{recommendedProduct.name}</div>
@@ -1619,7 +1734,7 @@ export default function App() {
 
       {selectedProduct && (
         <div style={styles.modalOverlay} onClick={() => setSelectedProduct(null)}>
-          <div style={styles.productDetailModal} onClick={(e) => e.stopPropagation()}>
+          <div className="rounded-scroll" style={styles.productDetailModal} onClick={(e) => e.stopPropagation()}>
             <button type="button" onClick={() => setSelectedProduct(null)} style={styles.productCloseButton}>×</button>
             <div style={styles.productDetailHero}>
               <img src={selectedProduct.image} alt={selectedProduct.name} style={styles.productDetailImage} />
@@ -1674,7 +1789,7 @@ export default function App() {
 
       {showManual && (
         <div style={styles.modalOverlay} onClick={() => setShowManual(false)}>
-          <div style={styles.rulesModalCard} onClick={(e) => e.stopPropagation()}>
+          <div className="rounded-scroll" style={styles.rulesModalCard} onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalHeader}>
               <div>
                 <h2 style={styles.modalTitle}>Usage Manual</h2>
@@ -1751,7 +1866,7 @@ export default function App() {
 
       {showRules && (
         <div style={styles.modalOverlay} onClick={() => setShowRules(false)}>
-          <div style={styles.rulesModalCard} onClick={(e) => e.stopPropagation()}>
+          <div className="rounded-scroll" style={styles.rulesModalCard} onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalHeader}>
               <div>
                 <h2 style={styles.modalTitle}>Cleaning Rules</h2>
@@ -2424,6 +2539,7 @@ const styles = {
     width: "min(94vw, 920px)",
     maxHeight: "88vh",
     overflowY: "auto",
+    overflowX: "hidden",
     background: "#fffaf3",
     borderRadius: 26,
     padding: 24,
@@ -2674,6 +2790,7 @@ const styles = {
     width: "min(94vw, 420px)",
     maxHeight: "92vh",
     overflowY: "auto",
+    overflowX: "hidden",
     background: "#fffaf3",
     borderRadius: 26,
     boxShadow: "0 28px 80px rgba(28,18,12,0.34)",
@@ -2831,6 +2948,75 @@ const styles = {
   adminProductList: {
     display: "grid",
     gap: 10,
+  },
+  adminRankingBox: {
+    marginBottom: 14,
+    padding: 14,
+    borderRadius: 18,
+    background: "linear-gradient(135deg, #fff7ed, #eff6ff)",
+    border: "1px solid rgba(146,64,14,0.14)",
+    boxShadow: "0 14px 34px rgba(92,54,24,0.08)",
+  },
+  adminRankingHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 10,
+  },
+  adminRankingBadge: {
+    padding: "6px 10px",
+    borderRadius: 999,
+    background: "#7c2d12",
+    color: "#ffffff",
+    fontSize: 11,
+    fontWeight: 950,
+    whiteSpace: "nowrap",
+  },
+  adminRankingList: {
+    display: "grid",
+    gap: 8,
+  },
+  adminRankingRow: {
+    display: "grid",
+    gridTemplateColumns: "32px 1fr auto",
+    gap: 10,
+    alignItems: "center",
+    padding: "9px 10px",
+    borderRadius: 14,
+    background: "rgba(255,255,255,0.78)",
+    border: "1px solid rgba(146,64,14,0.10)",
+  },
+  adminRankingRank: {
+    width: 26,
+    height: 26,
+    borderRadius: "50%",
+    background: "#f6eadf",
+    color: "#7c2d12",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 12,
+    fontWeight: 950,
+  },
+  adminRankingName: {
+    fontSize: 13,
+    fontWeight: 950,
+    color: "#24160f",
+  },
+  adminRankingCount: {
+    fontSize: 12,
+    fontWeight: 950,
+    color: "#9a3412",
+    whiteSpace: "nowrap",
+  },
+  adminRankingEmpty: {
+    padding: 12,
+    borderRadius: 14,
+    background: "rgba(255,255,255,0.72)",
+    color: "#7c5a46",
+    fontSize: 12,
+    fontWeight: 850,
   },
   adminHintBox: {
     marginBottom: 14,
@@ -3222,6 +3408,7 @@ const styles = {
     maxWidth: 1100,
     maxHeight: "88vh",
     overflowY: "auto",
+    overflowX: "hidden",
     background: "#fffaf3",
     borderRadius: 26,
     padding: 24,

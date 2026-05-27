@@ -9,7 +9,7 @@ const PART_TANK_URL = "/part-tank.png";
 const PART_HOLDER_URL = "/part-holder.png";
 const PART_TRAY_URL = "/part-tray.png";
 
-const CACHE_KEY = "coffeeDutyAppCacheV6";;
+const CACHE_KEY = "coffeeDutyAppCacheV20";
 const SLACK_WEBHOOK_URL = "";
 const WEATHER_URL =
   "https://api.open-meteo.com/v1/forecast?latitude=35.7295&longitude=139.7190&current=temperature_2m,weather_code&timezone=Asia%2FTokyo";

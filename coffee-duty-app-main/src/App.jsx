@@ -491,11 +491,6 @@ export default function App() {
   const [adminDraftProducts, setAdminDraftProducts] = useState([]);
   const [surveySummary, setSurveySummary] = useState([]);
 
-  useEffect(() => {
-    if (!products.length) {
-      setAdminDraftProducts(baseSurveyProducts);
-    }
-  }, [products, baseSurveyProducts]);
   const [selectedMachinePart, setSelectedMachinePart] = useState("tank");
 
   const [message, setMessage] = useState("");

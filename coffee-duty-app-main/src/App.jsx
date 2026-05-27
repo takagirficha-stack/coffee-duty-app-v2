@@ -884,15 +884,29 @@ export default function App() {
       return;
     }
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+
     try {
       const url = forceRefresh ? `${API_URL}?t=${Date.now()}` : API_URL;
-      const res = await fetch(url);
+      const res = await fetch(url, { signal: controller.signal });
       const data = await res.json();
+
+      if (!data || data.ok === false) {
+        throw new Error(data?.error || "API returned an error");
+      }
+
       localStorage.setItem(CACHE_KEY, JSON.stringify(data));
       applyApiData(data);
-    } catch {
-      setMessage(hasCache ? "Could not update. Showing cached data." : "Failed to load data. Please check the API connection.");
+    } catch (error) {
+      console.error(error);
+      setMessage(
+        hasCache
+          ? `Could not update. Showing cached data. ${error.message || ""}`
+          : `Failed to load data. ${error.message || "Please check the API connection."}`
+      );
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   }

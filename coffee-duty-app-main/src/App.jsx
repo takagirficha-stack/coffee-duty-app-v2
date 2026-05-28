@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 const API_URL =
-  "https://script.google.com/macros/s/AKfycbx41QCs8kYM81auy4klVGdwyzTQhs2t8RRpm3s2eWCiymHI-r3JjPpZ2jkOAzln_lQ_/exec";
+  "https://script.google.com/macros/s/AKfycbwJ6c71J0TB6wktWSi3Nt_zyJ6ioGZzfFhg0QztHfd0Ld34j5qpha5VYCiuI3nDDkfX/exec";
 
 const CLEANING_MAP_URL = "/cleaning-map.jpg";
 const MACHINE_OVERVIEW_URL = "/machine-overview.png";

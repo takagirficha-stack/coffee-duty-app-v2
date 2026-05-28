@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-const API_URL =
-  "https://script.google.com/macros/s/AKfycbwJ6c71J0TB6wktWSi3Nt_zyJ6ioGZzfFhg0QztHfd0Ld34j5qpha5VYCiuI3nDDkfX/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwJ6c71J0TB6wktWSi3Nt_zyJ6ioGZzfFhg0QztHfd0Ld34j5qpha5VYCiuI3nDDkfX/exec";
 
 const CLEANING_MAP_URL = "/cleaning-map.jpg";
 const MACHINE_OVERVIEW_URL = "/machine-overview.png";
@@ -438,14 +437,238 @@ function AppMotionStyles() {
         background: rgba(124,45,18,0.52);
       }
 
+
+      .recommended-product-card {
+        margin-top: 16px;
+        padding: 18px;
+        border-radius: 28px;
+        background: linear-gradient(135deg, rgba(255,247,237,0.96), rgba(239,246,255,0.9));
+        border: 1px solid rgba(146,64,14,0.12);
+        box-shadow: 0 14px 34px rgba(92,54,24,0.10);
+        overflow: hidden;
+      }
+
+      .recommended-product-content {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 190px;
+        gap: 18px;
+        align-items: center;
+      }
+
+      .recommended-product-text {
+        min-width: 0;
+      }
+
+      .recommended-product-kicker {
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
+        padding: 7px 11px;
+        border-radius: 999px;
+        background: rgba(154, 52, 18, 0.08);
+        border: 1px solid rgba(154, 52, 18, 0.12);
+        color: #9a3412;
+        font-size: 11px;
+        font-weight: 950;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .recommended-product-title {
+        margin: 12px 0 8px;
+        color: #24160f;
+        font-size: clamp(24px, 4vw, 34px);
+        line-height: 1.08;
+        font-weight: 950;
+        letter-spacing: -0.045em;
+      }
+
+      .recommended-product-description {
+        margin: 0;
+        color: #7c5a46;
+        font-size: 13px;
+        line-height: 1.6;
+        font-weight: 750;
+        word-break: normal;
+        overflow-wrap: anywhere;
+      }
+
+      .recommended-product-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        margin-top: 12px;
+      }
+
+      .recommended-product-tag {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 9px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.78);
+        border: 1px solid rgba(146,64,14,0.10);
+        color: #7c5a46;
+        font-size: 11px;
+        font-weight: 900;
+        white-space: nowrap;
+      }
+
+      .recommended-product-side {
+        min-width: 0;
+        display: grid;
+        gap: 12px;
+        justify-items: center;
+      }
+
+      .recommended-product-image-frame {
+        width: 100%;
+        max-width: 170px;
+        aspect-ratio: 1.22 / 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px;
+        border-radius: 22px;
+        background: rgba(255,255,255,0.74);
+        border: 1px solid rgba(146,64,14,0.08);
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.52);
+      }
+
+      .recommended-product-image {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        filter: drop-shadow(0 12px 16px rgba(92,54,24,0.16));
+      }
+
+      .recommended-product-detail-button {
+        width: 100%;
+        min-height: 44px;
+        padding: 10px 14px;
+        border-radius: 999px;
+        border: 1px solid #dfc2a8;
+        background: #ffffff;
+        color: #7c2d12;
+        font-size: 12px;
+        font-weight: 950;
+        cursor: pointer;
+        white-space: nowrap;
+        box-shadow: 0 10px 22px rgba(92,54,24,0.08);
+        transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+      }
+
+      .recommended-product-detail-button:hover {
+        transform: translateY(-2px);
+        background: #fff7ed;
+        box-shadow: 0 14px 28px rgba(92,54,24,0.12);
+      }
+
       @media (max-width: 720px) {
         body { overflow-x: hidden; }
+
+        .recommended-product-card {
+          margin-top: 14px;
+          padding: 16px;
+          border-radius: 24px;
+        }
+
+        .recommended-product-content {
+          grid-template-columns: 1fr;
+          gap: 16px;
+          align-items: start;
+        }
+
+        .recommended-product-kicker {
+          font-size: 10px;
+          letter-spacing: 0.08em;
+          padding: 6px 10px;
+        }
+
+        .recommended-product-title {
+          margin-top: 10px;
+          font-size: 26px;
+          line-height: 1.12;
+        }
+
+        .recommended-product-description {
+          font-size: 13px;
+          line-height: 1.65;
+          overflow-wrap: break-word;
+        }
+
+        .recommended-product-tags {
+          gap: 6px;
+          margin-top: 11px;
+        }
+
+        .recommended-product-tag {
+          min-height: 27px;
+          padding: 5px 8px;
+          font-size: 10px;
+        }
+
+        .recommended-product-side {
+          width: 100%;
+          grid-template-columns: 130px minmax(0, 1fr);
+          gap: 12px;
+          align-items: center;
+          justify-items: stretch;
+        }
+
+        .recommended-product-image-frame {
+          max-width: none;
+          width: 130px;
+          height: 104px;
+          aspect-ratio: auto;
+          border-radius: 20px;
+          padding: 10px;
+        }
+
+        .recommended-product-detail-button {
+          width: 100%;
+          min-height: 48px;
+          font-size: 13px;
+        }
         .soft-card { border-radius: 22px !important; }
         button { touch-action: manipulation; }
         .soft-card:hover,
         .info-hover-card:hover,
         .cleaning-hover-row:hover,
         .calendar-day:hover { transform: none; }
+      }
+
+      @media (max-width: 420px) {
+        .recommended-product-card {
+          padding: 14px;
+          border-radius: 22px;
+        }
+
+        .recommended-product-title {
+          font-size: 24px;
+        }
+
+        .recommended-product-description {
+          font-size: 12px;
+          line-height: 1.6;
+        }
+
+        .recommended-product-side {
+          grid-template-columns: 112px minmax(0, 1fr);
+          gap: 10px;
+        }
+
+        .recommended-product-image-frame {
+          width: 112px;
+          height: 94px;
+          padding: 8px;
+        }
+
+        .recommended-product-detail-button {
+          min-height: 46px;
+          padding: 9px 12px;
+          font-size: 12px;
+        }
       }
     `}</style>
   );
@@ -889,8 +1112,29 @@ export default function App() {
 
     try {
       const url = `${API_URL}?t=${Date.now()}`;
-      const res = await fetch(url, { signal: controller.signal });
-      const data = await res.json();
+      const res = await fetch(url, {
+        method: "GET",
+        signal: controller.signal,
+        cache: "no-store",
+        redirect: "follow",
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const text = await res.text();
+
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        console.error("Invalid JSON:", text);
+        throw new Error("Invalid API response");
+      }
 
       if (!data || data.ok === false) {
         throw new Error(data?.error || "API returned an error");
@@ -1642,20 +1886,64 @@ export default function App() {
             </div>
 
             {recommendedProduct && (
-              <div className="soft-float" style={styles.recommendedBox}>
-                <div style={styles.recommendedTextBlock}>
-                  <div style={styles.recommendedKicker}>Recommended this month</div>
-                  <div style={styles.recommendedTitle}>{recommendedProduct.name}</div>
-                  <div style={styles.recommendedSub}>{recommendedProduct.description}</div>
+              <div className="recommended-product-card soft-float">
+                <div className="recommended-product-content">
+                  <div className="recommended-product-text">
+                    <div className="recommended-product-kicker">Recommended this month</div>
+
+                    <h3 className="recommended-product-title">
+                      {recommendedProduct.name}
+                    </h3>
+
+                    <p className="recommended-product-description">
+                      {recommendedProduct.description ||
+                        "A balanced daily coffee with a clean aroma and smooth taste. Great for everyday office coffee breaks."}
+                    </p>
+
+                    <div className="recommended-product-tags">
+                      {recommendedProduct.category && (
+                        <span className="recommended-product-tag">
+                          {recommendedProduct.category}
+                        </span>
+                      )}
+                      <span className="recommended-product-tag">
+                        Strong {Number(recommendedProduct.strong || 0)}
+                      </span>
+                      <span className="recommended-product-tag">
+                        Milk {Number(recommendedProduct.milk || 0)}
+                      </span>
+                      <span className="recommended-product-tag">
+                        Sweet {Number(recommendedProduct.sweet || 0)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="recommended-product-side">
+                    <div className="recommended-product-image-frame">
+                      <img
+                        src={recommendedProduct.image}
+                        alt={recommendedProduct.name}
+                        className="recommended-product-image"
+                        onError={(e) => {
+                          if (
+                            recommendedProduct.fallbackImage &&
+                            e.currentTarget.src !== recommendedProduct.fallbackImage
+                          ) {
+                            e.currentTarget.src = recommendedProduct.fallbackImage;
+                          }
+                        }}
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      className="recommended-product-detail-button"
+                      onClick={() => setSelectedProduct(recommendedProduct)}
+                    >
+                      🔍 View details
+                    </button>
+                  </div>
                 </div>
-                <img src={recommendedProduct.image} alt={recommendedProduct.name} style={styles.recommendedImage} />
-                <button
-                  type="button"
-                  style={styles.recommendedButton}
-                  onClick={() => setSelectedProduct(recommendedProduct)}
-                >
-                  🔍 View details
-                </button>
               </div>
             )}
 

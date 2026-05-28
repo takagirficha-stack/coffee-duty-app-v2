@@ -9,7 +9,7 @@ const PART_TANK_URL = "/part-tank.png";
 const PART_HOLDER_URL = "/part-holder.png";
 const PART_TRAY_URL = "/part-tray.png";
 
-const CACHE_KEY = "coffeeDutyAppCacheV20";
+const CACHE_KEY = "coffeeDutyAppCacheV21";
 const SLACK_WEBHOOK_URL = "";
 const WEATHER_URL =
   "https://api.open-meteo.com/v1/forecast?latitude=35.7295&longitude=139.7190&current=temperature_2m,weather_code&timezone=Asia%2FTokyo";
@@ -885,10 +885,10 @@ export default function App() {
     }
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    const timeoutId = setTimeout(() => controller.abort(), 45000);
 
     try {
-      const url = forceRefresh ? `${API_URL}?t=${Date.now()}` : API_URL;
+      const url = `${API_URL}?t=${Date.now()}`;
       const res = await fetch(url, { signal: controller.signal });
       const data = await res.json();
 
@@ -902,8 +902,8 @@ export default function App() {
       console.error(error);
       setMessage(
         hasCache
-          ? `Could not update. Showing cached data. ${error.message || ""}`
-          : `Failed to load data. ${error.message || "Please check the API connection."}`
+          ? `Could not update. Showing cached data. ${error.name === "AbortError" ? "API timeout. Please try Refresh again." : error.message || ""}`
+          : `Failed to load data. ${error.name === "AbortError" ? "API timeout. Please try Refresh again." : error.message || "Please check the API connection."}`
       );
     } finally {
       clearTimeout(timeoutId);
